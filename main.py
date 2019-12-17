@@ -119,7 +119,7 @@ class OperatorUpdate(Resource):
         print(o)
         if o is not None:
             return o, 200
-        return "Operator not found", 404
+        return "Notification not found", 404
 
     @api.expect(notification_model)
     @api.marshal_with(notification_return)
@@ -127,13 +127,16 @@ class OperatorUpdate(Resource):
         """Updates a notification."""
         user_id = getUserId(request)
         req = request.get_json()
-        operator = notifications.find_one_and_update({'$and': [{'_id': ObjectId(notification_id)}, {'userId': user_id}]}, {
-            '$set': req,
-        },
-                                                     return_document=ReturnDocument.AFTER)
-        if operator is not None:
-            return operator, 200
-        return "Operator not found", 404
+        if (req['userId'] == user_id):
+            operator = notifications.find_one_and_update({'$and': [{'_id': ObjectId(notification_id)}, {'userId': user_id}]}, {
+                '$set': req,
+            },
+                                                         return_document=ReturnDocument.AFTER)
+            if operator is not None:
+                return operator, 200
+            return "Operator not found", 404
+        else:
+            return 'You may only send messages to yourself', 403
 
     @api.response(204, "Deleted")
     def delete(self, notification_id):
