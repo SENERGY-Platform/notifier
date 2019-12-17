@@ -69,7 +69,7 @@ class Operator(Resource):
         req = request.get_json()
         operator_id = notifications.insert_one(req).inserted_id
         o = notifications.find_one({'_id': operator_id})
-        print("Added notification: " + json.dumps({"_id": str(operator_id)}) + " for user " + getUserId(request))
+        print("Added notification: " + json.dumps({"_id": str(operator_id)}) + " for user " + req['userId'])
         return o, 201
 
     @api.marshal_with(notification_list, code=200)
@@ -98,7 +98,7 @@ class Operator(Resource):
         notifications_list = []
         for o in nots:
             notifications_list.append(o)
-        print("User " + user_id + " read " + len(notifications_list) + " notifications")
+        print("User " + user_id + " read " + str(len(notifications_list)) + " notifications")
         return {"notifications": notifications_list}
 
 
