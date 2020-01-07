@@ -4,3 +4,4 @@ flask_restplus
 marshmallow_jsonapi
 flask_cors
 python-dotenv
+gunicorn
