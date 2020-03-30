@@ -1,6 +1,6 @@
 pymongo
 flask
-flask_restplus
+flask-restx
 marshmallow_jsonapi
 flask_cors
 python-dotenv
