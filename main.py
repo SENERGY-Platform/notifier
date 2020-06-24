@@ -67,7 +67,7 @@ class Operator(Resource):
         """Creates a notification."""
         req = request.get_json()
         user_id = getUserId(request)
-        if req['userId'] == user_id:
+        if user_id is None or req['userId'] == user_id:
             o = db.create_notification(req)
             logger.info("Added notification: " + str(o['_id']) + " for user " + req['userId'])
             return o, 201
@@ -124,7 +124,7 @@ class OperatorUpdate(Resource):
         """Updates a notification."""
         user_id = getUserId(request)
         req = request.get_json()
-        if (req['userId'] == user_id):
+        if user_id is None or req['userId'] == user_id:
             try:
                 n = db.update_notification(req, notification_id, user_id)
             except Exception as e:
@@ -218,8 +218,6 @@ class OperatorUpdate(Resource):
 
 def getUserId(req):
     user_id = req.headers.get('X-UserID')
-    if user_id is None:
-        user_id = os.getenv('DUMMY_USER', 'test')
     return user_id
 
 
