@@ -145,7 +145,7 @@ class OperatorUpdate(Resource):
         return "Deleted", 204
 
 
-
+@admin.deprecated
 @admin.route('/', strict_slashes=False)
 class Operator(Resource):
     @api.expect(notification_model)
@@ -181,6 +181,7 @@ class Operator(Resource):
         return {"notifications": notifications_list}
 
 
+@admin.deprecated
 @admin.route('/<string:notification_id>', strict_slashes=False)
 @api.response(404, 'Notification not found.')
 @api.response(400, 'Bad request')
