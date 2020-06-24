@@ -17,6 +17,7 @@ from flask import Flask, request, abort
 from flask_restx import Api, Resource, fields, reqparse
 from flask_cors import CORS
 import util.db as db
+import logging
 
 application = Flask("notification-service")
 application.config.SWAGGER_UI_DOC_EXPANSION = 'list'
@@ -24,6 +25,11 @@ CORS(application)
 api = Api(application, version='0.1', title='Notification Service API',
           description='Notification Service API')
 
+if os.getenv("DEBUG", False):
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.DEBUG)
+
+logger = logging.getLogger('main')
 
 @api.route('/doc')
 class Docs(Resource):
@@ -63,7 +69,7 @@ class Operator(Resource):
         user_id = getUserId(request)
         if req['userId'] == user_id:
             o = db.create_notification(req)
-            print("Added notification: " + str(o['_id']) + " for user " + req['userId'])
+            logger.info("Added notification: " + str(o['_id']) + " for user " + req['userId'])
             return o, 201
         else:
             abort(403, 'You may only send messages to yourself')
@@ -89,7 +95,7 @@ class Operator(Resource):
         user_id = getUserId(request)
 
         notifications_list = db.list_notifications(limit=limit, offset=offset, sort=sort, user_id=user_id)
-        print("User " + user_id + " read " + str(len(notifications_list)) + " notifications")
+        logger.info("User " + user_id + " read " + str(len(notifications_list)) + " notifications")
         return {"notifications": notifications_list}
 
 
@@ -105,7 +111,7 @@ class OperatorUpdate(Resource):
             o = db.read_notification(notification_id, user_id)
         except Exception as e:
             abort(400, str(e))
-        print(o)
+        logger.debug(o)
         if o is not None:
             return o, 200
         abort(404, "Notification not found")
@@ -148,7 +154,7 @@ class Operator(Resource):
         """Creates a notification."""
         req = request.get_json()
         o = db.create_notification(req)
-        print("Added notification: " + str(o["_id"]) + " for user " + req['userId'])
+        logger.info("Added notification: " + str(o["_id"]) + " for user " + req['userId'])
         return o, 201
 
     @api.marshal_with(notification_list, code=200)
@@ -171,7 +177,7 @@ class Operator(Resource):
             sort = ["_id", "desc"]
 
         notifications_list = db.list_notifications(limit=limit, offset=offset, sort=sort)
-        print("Admin API delivered " + str(len(notifications_list)) + " notifications")
+        logger.info("Admin API delivered " + str(len(notifications_list)) + " notifications")
         return {"notifications": notifications_list}
 
 
@@ -186,7 +192,7 @@ class OperatorUpdate(Resource):
             o = db.read_notification(notification_id)
         except Exception as e:
             abort(400, str(e))
-        print(o)
+        logger.debug(o)
         return o, 200
 
     @api.expect(notification_model)
