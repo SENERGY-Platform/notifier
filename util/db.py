@@ -41,7 +41,7 @@ def update_notification(notification, notification_id, user_id=None):
         return notifications.find_one_and_update({'$and': [{'_id': ObjectId(notification_id)}, {'userId': user_id}]},
                                                  {'$set': notification, }, return_document=ReturnDocument.AFTER)
 
-    return notifications.find_one_and_update({'$and': [{'_id': ObjectId(notification['_id'])}]},
+    return notifications.find_one_and_update({'$and': [{'_id': ObjectId(notification_id)}]},
                                              {'$set': notification, }, return_document=ReturnDocument.AFTER)
 
 
