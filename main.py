@@ -57,6 +57,8 @@ notification_list = api.model('NotificationList', {
     "notifications": fields.List(fields.Nested(notification_return))
 })
 
+not_found_msg = "Notification not found"
+
 
 @ns.route('/', strict_slashes=False)
 class Operator(Resource):
@@ -114,7 +116,7 @@ class OperatorUpdate(Resource):
         logger.debug(o)
         if o is not None:
             return o, 200
-        abort(404, "Notification not found")
+        abort(404, not_found_msg)
 
     @api.expect(notification_model)
     @api.marshal_with(notification_return)
@@ -130,7 +132,7 @@ class OperatorUpdate(Resource):
             except Exception as e:
                 abort(400, str(e))
             if n is None:
-                abort(404, "Notification not found")
+                abort(404, not_found_msg)
             return n
         else:
             abort(403, 'You may only update your own messages')
@@ -141,7 +143,7 @@ class OperatorUpdate(Resource):
         user_id = get_user_id(request)
         d = db.delete_notification(notification_id, user_id)
         if d.deleted_count == 0:
-            abort(404, "Notification not found")
+            abort(404, not_found_msg)
         return "Deleted", 204
 
 
@@ -207,13 +209,13 @@ class OperatorUpdate(Resource):
             abort(400, str(e))
         if n is not None:
             return n, 200
-        abort(404, "Notification not found")
+        abort(404, not_found_msg)
 
     @api.response(204, "Deleted")
     def delete(self, notification_id):
         """Deletes a notification."""
         if db.delete_notification(notification_id).deleted_count == 0:
-            abort(404, "Notification not found")
+            abort(404, not_found_msg)
         return "Deleted", 204
 
 
