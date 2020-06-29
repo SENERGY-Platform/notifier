@@ -23,9 +23,8 @@ logger = logging.getLogger('util.db')
 
 
 def create_notification(notification, user_id=None):
-    if user_id is not None:
-        if notification['userId'] != user_id:
-            raise ValueError('userIds do not match')
+    if user_id is not None and notification['userId'] != user_id:
+        raise ValueError('userIds do not match')
     notification_id = notifications.insert_one(notification).inserted_id
     return notifications.find_one({'_id': notification_id})
 
