@@ -144,7 +144,7 @@ def get_test_notification():
 
 def get_test_notification_many(i):
     notifications = []
-    for j in range(0, i):
+    for _ in range(0, i):
         notification = get_test_notification()
         notifications.append(notification)
     return notifications
