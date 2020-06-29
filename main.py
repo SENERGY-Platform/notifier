@@ -66,7 +66,7 @@ class Operator(Resource):
     def put(self):
         """Creates a notification."""
         req = request.get_json()
-        user_id = getUserId(request)
+        user_id = get_user_id(request)
         if user_id is None or req['userId'] == user_id:
             o = db.create_notification(req)
             logger.info("Added notification: " + str(o['_id']) + " for user " + req['userId'])
@@ -92,7 +92,7 @@ class Operator(Resource):
             sort = args["sort"].split(":")
         else:
             sort = ["_id", "desc"]
-        user_id = getUserId(request)
+        user_id = get_user_id(request)
 
         notifications_list = db.list_notifications(limit=limit, offset=offset, sort=sort, user_id=user_id)
         logger.info("User " + user_id + " read " + str(len(notifications_list)) + " notifications")
@@ -106,7 +106,7 @@ class OperatorUpdate(Resource):
     @api.marshal_with(notification_return)
     def get(self, notification_id):
         """Get a single notification. This will perform userId checks and returns 404, even if this messages exists, but the userId isn't matching """
-        user_id = getUserId(request)
+        user_id = get_user_id(request)
         try:
             o = db.read_notification(notification_id, user_id)
         except Exception as e:
@@ -122,7 +122,7 @@ class OperatorUpdate(Resource):
     @api.response(404, 'Notification not found')
     def post(self, notification_id):
         """Updates a notification."""
-        user_id = getUserId(request)
+        user_id = get_user_id(request)
         req = request.get_json()
         if user_id is None or req['userId'] == user_id:
             try:
@@ -138,7 +138,7 @@ class OperatorUpdate(Resource):
     @api.response(204, "Deleted")
     def delete(self, notification_id):
         """Deletes a notification."""
-        user_id = getUserId(request)
+        user_id = get_user_id(request)
         d = db.delete_notification(notification_id, user_id)
         if d.deleted_count == 0:
             abort(404, "Notification not found")
@@ -217,7 +217,7 @@ class OperatorUpdate(Resource):
         return "Deleted", 204
 
 
-def getUserId(req):
+def get_user_id(req):
     user_id = req.headers.get('X-UserID')
     return user_id
 
