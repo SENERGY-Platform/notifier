@@ -45,7 +45,8 @@ notification_model = api.model('Notification', {
     'userId': fields.String(required=True, description='User ID'),
     'title': fields.String(required=True, description='Title'),
     'message': fields.String(required=True, description='Message'),
-    'isRead': fields.Boolean(required=True, description='If the message has been read')
+    'isRead': fields.Boolean(required=True, description='If the message has been read'),
+    'created_at': fields.String(description='Creation timestamp. Might be null for older messages'),
 })
 
 notification_return = notification_model.clone('Notification', {
@@ -95,6 +96,9 @@ class Operator(Resource):
         else:
             sort = ["_id", "desc"]
         user_id = get_user_id(request)
+        if user_id is None:
+            abort(400, "Missing header X-UserID")
+            return
 
         notifications_list = db.list_notifications(limit=limit, offset=offset, sort=sort, user_id=user_id)
         logger.info("User " + user_id + " read " + str(len(notifications_list)) + " notifications")

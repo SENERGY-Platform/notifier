@@ -15,6 +15,7 @@ from bson import ObjectId
 from pymongo import MongoClient, ReturnDocument, ASCENDING, DESCENDING
 import os
 import logging
+from datetime import datetime, timezone
 
 client = MongoClient(os.getenv('MONGO_ADDR', 'localhost'), 27017)
 db = client.db
@@ -25,6 +26,8 @@ logger = logging.getLogger('util.db')
 def create_notification(notification, user_id=None):
     if user_id is not None and notification['userId'] != user_id:
         raise ValueError('userIds do not match')
+    if "created_at" not in notification:
+        notification["created_at"] = datetime.now(tz=timezone.utc).replace(microsecond=0).isoformat()
     notification_id = notifications.insert_one(notification).inserted_id
     return notifications.find_one({'_id': notification_id})
 
