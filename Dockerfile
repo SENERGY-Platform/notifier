@@ -1,4 +1,5 @@
 FROM python:3.6-onbuild
+LABEL org.opencontainers.image.source https://github.com/SENERGY-Platform/notifier
 
 EXPOSE 5000
 
