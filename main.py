@@ -31,6 +31,7 @@ if os.getenv("DEBUG", False):
 
 logger = logging.getLogger('main')
 
+
 @api.route('/doc')
 class Docs(Resource):
     def get(self):
@@ -38,8 +39,6 @@ class Docs(Resource):
 
 
 ns = api.namespace('notifications', description='Operations related to notifications')
-admin = api.namespace('admin', description='Admin operations related to notifications. Will not perform X-UserID checks.'
-                                           ' API will not be accessible from outside the platform.')
 
 notification_model = api.model('Notification', {
     'userId': fields.String(required=True, description='User ID'),
@@ -147,78 +146,6 @@ class OperatorUpdate(Resource):
         user_id = get_user_id(request)
         d = db.delete_notification(notification_id, user_id)
         if d.deleted_count == 0:
-            abort(404, not_found_msg)
-        return "Deleted", 204
-
-
-@admin.deprecated
-@admin.route('/', strict_slashes=False)
-class Operator(Resource):
-    @api.expect(notification_model)
-    @api.marshal_with(notification_return, code=201)
-    def put(self):
-        """Creates a notification."""
-        req = request.get_json()
-        o = db.create_notification(req)
-        logger.info("Added notification: " + str(o["_id"]) + " for user " + req['userId'])
-        return o, 201
-
-    @api.marshal_with(notification_list, code=200)
-    def get(self):
-        """Returns a list of notifications."""
-        parser = reqparse.RequestParser()
-        parser.add_argument('limit', type=int, help='Limit', location='args')
-        parser.add_argument('offset', type=int, help='Offset', location='args')
-        parser.add_argument('sort', type=str, help='Sort', location='args')
-        args = parser.parse_args()
-        limit = 0
-        if not (args["limit"] is None):
-            limit = args["limit"]
-        offset = 0
-        if not (args["offset"] is None):
-            offset = args["offset"]
-        if not (args["sort"] is None):
-            sort = args["sort"].split(":")
-        else:
-            sort = ["_id", "desc"]
-
-        notifications_list = db.list_notifications(limit=limit, offset=offset, sort=sort)
-        logger.info("Admin API delivered " + str(len(notifications_list)) + " notifications")
-        return {"notifications": notifications_list}
-
-
-@admin.deprecated
-@admin.route('/<string:notification_id>', strict_slashes=False)
-@api.response(404, 'Notification not found.')
-@api.response(400, 'Bad request')
-class OperatorUpdate(Resource):
-    @api.marshal_with(notification_return)
-    def get(self, notification_id):
-        """Get a single notification."""
-        try:
-            o = db.read_notification(notification_id)
-        except Exception as e:
-            abort(400, str(e))
-        logger.debug(o)
-        return o, 200
-
-    @api.expect(notification_model)
-    @api.marshal_with(notification_return)
-    def post(self, notification_id):
-        """Updates a notification."""
-        req = request.get_json()
-        try:
-            n = db.update_notification(req, notification_id)
-        except Exception as e:
-            abort(400, str(e))
-        if n is not None:
-            return n, 200
-        abort(404, not_found_msg)
-
-    @api.response(204, "Deleted")
-    def delete(self, notification_id):
-        """Deletes a notification."""
-        if db.delete_notification(notification_id).deleted_count == 0:
             abort(404, not_found_msg)
         return "Deleted", 204
 
