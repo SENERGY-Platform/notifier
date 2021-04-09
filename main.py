@@ -12,14 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-from flask import Flask, request, abort
-from flask_restx import Api, Resource, fields, reqparse
-from flask_cors import CORS
-import util.db as db
+import json
 import logging
+import os
+import time
+from typing import Dict, List
+
+from flask import Flask, request, abort
+from flask_cors import CORS
+from flask_restx import Api, Resource, fields, reqparse
+from flask_sockets import Sockets
+from geventwebsocket.websocket import WebSocket
+
+import util.db as db
+from util.WebSocketContainer import WebSocketContainer
 
 application = Flask("notification-service")
+sockets = Sockets(application)
 application.config.SWAGGER_UI_DOC_EXPANSION = 'list'
 CORS(application)
 api = Api(application, version='0.1', title='Notification Service API',
@@ -39,6 +48,7 @@ class Docs(Resource):
 
 
 ns = api.namespace('notifications', description='Operations related to notifications')
+ws = api.namespace('ws', description='ws')
 
 notification_model = api.model('Notification', {
     'userId': fields.String(required=True, description='User ID'),
@@ -59,6 +69,8 @@ notification_list = api.model('NotificationList', {
 
 not_found_msg = "Notification not found"
 
+user_sockets: Dict[str, List[WebSocketContainer]] = {}
+
 
 @ns.route('/', strict_slashes=False)
 class Operator(Resource):
@@ -72,6 +84,7 @@ class Operator(Resource):
         if user_id is None or req['userId'] == user_id:
             o = db.create_notification(req)
             logger.info("Added notification: " + str(o['_id']) + " for user " + req['userId'])
+            send_update(o)
             return o, 201
         else:
             abort(403, 'You may only send messages to yourself')
@@ -116,6 +129,7 @@ class OperatorUpdate(Resource):
             o = db.read_notification(notification_id, user_id)
         except Exception as e:
             abort(400, str(e))
+            return
         logger.debug(o)
         if o is not None:
             return o, 200
@@ -134,8 +148,10 @@ class OperatorUpdate(Resource):
                 n = db.update_notification(req, notification_id, user_id)
             except Exception as e:
                 abort(400, str(e))
+                return
             if n is None:
                 abort(404, not_found_msg)
+            send_update(n)
             return n
         else:
             abort(403, 'You may only update your own messages')
@@ -144,16 +160,95 @@ class OperatorUpdate(Resource):
     def delete(self, notification_id):
         """Deletes a notification."""
         user_id = get_user_id(request)
+        n = db.read_notification(notification_id, user_id)
         d = db.delete_notification(notification_id, user_id)
         if d.deleted_count == 0:
             abort(404, not_found_msg)
+        send_delete(notification_id, n["userId"])
         return "Deleted", 204
 
 
-def get_user_id(req):
+def get_user_id(req) -> str:
     user_id = req.headers.get('X-UserID')
     return user_id
 
 
+@sockets.route('/ws')
+def sock(ws: WebSocket):
+    cws = WebSocketContainer(ws)
+    while not cws.ws.closed:
+        message = cws.ws.receive()
+        try:
+            message = json.loads(message)
+        except Exception as e:
+            cws.ws.close(4400, "Bad request: " + str(e))
+            continue
+        if "type" not in message or not isinstance(message["type"], str):
+            cws.ws.close(4400, "Bad request")
+            continue
+        if message["type"] == "refresh":
+            if cws.user_id == '' or cws.authenticated_until < time.time():
+                cws.ws.close(4401, "unauthenticated")
+                continue
+            notifications = db.list_notifications(limit=100000, offset=0, sort=["_id", "desc"], user_id=cws.user_id)
+            for n in notifications:
+                n['_id'] = str(n['_id'])
+            cws.ws.send('{"type":"notification list", "payload":' + json.dumps(notifications, ensure_ascii=False) + '}')
+            continue
+        elif message["type"] == "authentication":
+            if "payload" not in message or not isinstance(message["payload"], str):
+                cws.ws.close(4400, "Bad request")
+                continue
+            if not cws.user_id == '' and cws.user_id in user_sockets:
+                user_sockets[cws.user_id].remove(cws)
+            try:
+                payload: str = message["payload"]
+                token = payload[7:]  # strips "Bearer "
+                user_id = cws.authenticate(token)
+                if user_id not in user_sockets:
+                    user_sockets[user_id] = []
+                user_sockets[user_id].append(cws)
+                cws.ws.send('{"type": "authentication confirmed"}')
+            except Exception as e:
+                cws.ws.close(4401, "could not authenticate: " + str(e))
+            continue
+        else:
+            cws.ws.close(4400, "Unknown request type " + message["type"])
+            continue
+
+
+def send_update(notification):
+    if notification["userId"] in user_sockets:
+        for cws in user_sockets[notification["userId"]]:
+            if cws.user_id == '' or cws.authenticated_until < time.time():
+                if not cws.ws.closed:
+                    cws.ws.send('{"type":"please reauthenticate"')
+                continue
+            notification['_id'] = str(notification['_id'])
+            if not cws.ws.closed:
+                cws.ws.send(
+                    '{"type":"put notification", "payload":' + json.dumps(notification, ensure_ascii=False) + '}')
+            else:
+                user_sockets[notification["userId"]].remove(cws)
+
+
+def send_delete(notification_id: str, user_id: str):
+    if user_id in user_sockets:
+        for cws in user_sockets[user_id]:
+            if cws.user_id == '' or cws.authenticated_until < time.time():
+                if not cws.ws.closed:
+                    cws.ws.send('{"type":"please reauthenticate"}')
+                continue
+            if not cws.ws.closed:
+                cws.ws.send('{"type":"delete notification", "payload":"' + notification_id + '"' + '}')
+            else:
+                user_sockets[user_id].remove(cws)
+
+
 if __name__ == "__main__":
-    application.run("0.0.0.0", os.getenv('PORT', 5000), debug=False)
+    from gevent import pywsgi
+    from geventwebsocket.handler import WebSocketHandler
+
+    print("Only use main for testing purposes, please use gunicorn (or similar) for production use")
+    server = pywsgi.WSGIServer(('', 5000), application, handler_class=WebSocketHandler)
+    server.serve_forever()

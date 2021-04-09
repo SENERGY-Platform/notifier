@@ -5,3 +5,6 @@ marshmallow_jsonapi
 flask_cors
 python-dotenv
 gunicorn
+flask_sockets
+gevent
+pyjwt[crypto]
