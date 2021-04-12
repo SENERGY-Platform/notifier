@@ -236,28 +236,32 @@ def send_update(notification):
     if notification["userId"] in user_sockets:
         for cws in user_sockets[notification["userId"]]:
             if cws.user_id == '' or cws.authenticated_until < time.time():
-                if not cws.ws.closed:
+                try:
                     cws.ws.send('{"type":"please reauthenticate"')
+                except Exception as e:
+                    print("Could not send update", str(e))
                 continue
             notification['_id'] = str(notification['_id'])
-            if not cws.ws.closed:
+            try:
                 cws.ws.send(
                     '{"type":"put notification", "payload":' + json.dumps(notification, ensure_ascii=False) + '}')
-            else:
-                user_sockets[notification["userId"]].remove(cws)
+            except Exception as e:
+                print("Could not send update", str(e))
 
 
 def send_delete(notification_id: str, user_id: str):
     if user_id in user_sockets:
         for cws in user_sockets[user_id]:
             if cws.user_id == '' or cws.authenticated_until < time.time():
-                if not cws.ws.closed:
+                try:
                     cws.ws.send('{"type":"please reauthenticate"}')
+                except Exception as e:
+                    print("Could not send delete", str(e))
                 continue
-            if not cws.ws.closed:
+            try:
                 cws.ws.send('{"type":"delete notification", "payload":"' + notification_id + '"' + '}')
-            else:
-                user_sockets[user_id].remove(cws)
+            except Exception as e:
+                print("Could not send update", str(e))
 
 
 if __name__ == "__main__":
