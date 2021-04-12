@@ -11,14 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from geventwebsocket.websocket import WebSocket
-
+from flask_uwsgi_websocket import GeventWebSocketClient
 from util import jwt
 
 
 class WebSocketContainer():
-    def __init__(self, ws: WebSocket):
+    def __init__(self, ws: GeventWebSocketClient):
         self.authenticated_until = 0
         self.user_id: str = ''
         self.ws = ws

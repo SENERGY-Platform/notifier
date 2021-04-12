@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from gevent import monkey
+monkey.patch_all() # required to do this before any other imports
+
 import json
 import logging
 import os
@@ -21,14 +24,14 @@ from typing import Dict, List
 from flask import Flask, request, abort
 from flask_cors import CORS
 from flask_restx import Api, Resource, fields, reqparse
-from flask_sockets import Sockets
-from geventwebsocket.websocket import WebSocket
+from flask_uwsgi_websocket import GeventWebSocket, GeventWebSocketClient
 
-import util.db as db
+from util.db import DB
 from util.WebSocketContainer import WebSocketContainer
 
 application = Flask("notification-service")
-sockets = Sockets(application)
+
+sockets = GeventWebSocket(application)
 application.config.SWAGGER_UI_DOC_EXPANSION = 'list'
 CORS(application)
 api = Api(application, version='0.1', title='Notification Service API',
@@ -48,7 +51,6 @@ class Docs(Resource):
 
 
 ns = api.namespace('notifications', description='Operations related to notifications')
-ws = api.namespace('ws', description='ws')
 
 notification_model = api.model('Notification', {
     'userId': fields.String(required=True, description='User ID'),
@@ -70,6 +72,7 @@ notification_list = api.model('NotificationList', {
 not_found_msg = "Notification not found"
 
 user_sockets: Dict[str, List[WebSocketContainer]] = {}
+db = DB()
 
 
 @ns.route('/', strict_slashes=False)
@@ -174,21 +177,30 @@ def get_user_id(req) -> str:
 
 
 @sockets.route('/ws')
-def sock(ws: WebSocket):
+def sock(ws: GeventWebSocketClient):
     cws = WebSocketContainer(ws)
-    while not cws.ws.closed:
+    ws.receive()
+    while True:
         message = cws.ws.receive()
-        try:
-            message = json.loads(message)
-        except Exception as e:
-            cws.ws.close(4400, "Bad request: " + str(e))
+        if message is None:  # Connection closed
+            if not cws.user_id == '' and cws.user_id in user_sockets:
+                user_sockets[cws.user_id].remove(cws)
+            break
+        if len(message) == 0:
             continue
+        try:
+            message = json.loads(message.decode('utf-8'))
+        except Exception as e:
+            print("decoding error", str(e))
+            cws.ws.close()
+            continue
+
         if "type" not in message or not isinstance(message["type"], str):
-            cws.ws.close(4400, "Bad request")
+            cws.ws.close()
             continue
         if message["type"] == "refresh":
             if cws.user_id == '' or cws.authenticated_until < time.time():
-                cws.ws.close(4401, "unauthenticated")
+                cws.ws.close()
                 continue
             notifications = db.list_notifications(limit=100000, offset=0, sort=["_id", "desc"], user_id=cws.user_id)
             for n in notifications:
@@ -197,7 +209,8 @@ def sock(ws: WebSocket):
             continue
         elif message["type"] == "authentication":
             if "payload" not in message or not isinstance(message["payload"], str):
-                cws.ws.close(4400, "Bad request")
+                print("payload error")
+                cws.ws.close()
                 continue
             if not cws.user_id == '' and cws.user_id in user_sockets:
                 user_sockets[cws.user_id].remove(cws)
@@ -210,10 +223,12 @@ def sock(ws: WebSocket):
                 user_sockets[user_id].append(cws)
                 cws.ws.send('{"type": "authentication confirmed"}')
             except Exception as e:
-                cws.ws.close(4401, "could not authenticate: " + str(e))
+                print("refresh error", str(e))
+                cws.ws.close()
             continue
         else:
-            cws.ws.close(4400, "Unknown request type " + message["type"])
+            print(str("unknown ws message type"))
+            cws.ws.close()
             continue
 
 
@@ -246,9 +261,5 @@ def send_delete(notification_id: str, user_id: str):
 
 
 if __name__ == "__main__":
-    from gevent import pywsgi
-    from geventwebsocket.handler import WebSocketHandler
+    print("Please run using command from Dockerfile")
 
-    print("Only use main for testing purposes, please use gunicorn (or similar) for production use")
-    server = pywsgi.WSGIServer(('', 5000), application, handler_class=WebSocketHandler)
-    server.serve_forever()

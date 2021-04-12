@@ -5,4 +5,5 @@ EXPOSE 5000
 ADD . /opt/app
 WORKDIR /opt/app
 RUN pip install --no-cache-dir -r requirements.txt
-CMD [ "gunicorn", "-k", "flask_sockets.worker", "-b", "0.0.0.0:5000", "--access-logfile", "-", "--keep-alive", "60", "main" ]
+USER 1000
+CMD [ "uwsgi", "--http", ":5000", "--http-websockets", "--gevent", "100", "--wsgi", "main" ]
