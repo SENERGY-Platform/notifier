@@ -19,6 +19,7 @@ import jwt
 jwt_signing_key = "-----BEGIN PUBLIC KEY-----\n" + os.getenv('JWT_SIGNING_KEY', '') + "\n-----END PUBLIC KEY-----"
 jwt_method = os.getenv('JWT_SIGNING_METHOD', 'RS256')
 
+print(jwt_signing_key)
 
 def decode(token: str) -> dict:
     return jwt.decode(token, jwt_signing_key, algorithms=[jwt_method], audience='account')

@@ -224,7 +224,7 @@ def sock(ws: GeventWebSocketClient):
                 user_sockets[user_id].append(cws)
                 cws.ws.send('{"type": "authentication confirmed"}')
             except Exception as e:
-                print("refresh error", str(e))
+                print("authentication error", str(e))
                 cws.ws.close()
             continue
         else:
