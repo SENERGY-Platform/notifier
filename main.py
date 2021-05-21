@@ -189,6 +189,7 @@ def sock(ws: GeventWebSocketClient):
         if len(message) == 0:
             continue
         try:
+            logger.debug(message.decode('utf-8'))
             message = json.loads(message.decode('utf-8'))
         except Exception as e:
             print("decoding error", str(e))
