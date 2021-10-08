@@ -79,5 +79,4 @@ const WsAuthOkType = "authentication confirmed"
 const WsUpdateSetType = "put notification"
 const WsRefreshType = "refresh"
 const WsListType = "notification list"
-
-// const WsUpdateDeleteType = "delete notification"
+const WsUpdateDeleteType = "delete notification"

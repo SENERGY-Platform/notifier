@@ -80,7 +80,11 @@ func (this *Controller) CreateNotification(token auth.Token, notification model.
 }
 
 func (this *Controller) DeleteMultipleNotifications(token auth.Token, ids []string) (err error, errCode int) {
-	return this.db.RemoveNotifications(token.GetUserId(), ids)
+	err, errCode = this.db.RemoveNotifications(token.GetUserId(), ids)
+	if err == nil {
+		this.handleWsNotificationDelete(token.GetUserId(), ids)
+	}
+	return
 }
 
 func (this *Controller) startPing(ctx context.Context, conn *websocket.Conn) (err error) {

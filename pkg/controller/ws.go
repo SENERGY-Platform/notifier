@@ -140,6 +140,31 @@ func (this *Controller) handleWsNotificationUpdate(userId string, notification m
 	}
 }
 
+func (this *Controller) handleWsNotificationDelete(userId string, ids []string) {
+	sessions, ok := this.sessions[userId]
+	if !ok {
+		return
+	}
+	for _, session := range sessions {
+		session := session // thread safety
+		go func() {
+			if session.token == nil || session.token.IsExpired() {
+				err := this.wsSendAuthRequest(session.conn)
+				if err != nil {
+					log.Println("ERROR: unable to send auth request", err)
+				}
+				return
+			}
+			for _, id := range ids {
+				err := this.wsSend(session.conn, model.WsUpdateDeleteType, id)
+				if err != nil {
+					log.Println("ERROR: unable to notify session", session.id)
+				}
+			}
+		}()
+	}
+}
+
 func (this *Controller) handleWsRefresh(session *WsSession) error {
 	if session.token == nil || session.token.IsExpired() {
 		return this.wsSendAuthRequest(session.conn)
