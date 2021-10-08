@@ -102,10 +102,18 @@ func NotificationsEndpoints(_ configuration.Config, control Controller, router *
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		token, err := auth.GetParsedToken(request)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusUnauthorized)
-			return
+		var token auth.Token
+		if len(auth.GetAuthToken(request)) > 0 {
+			token, err = auth.GetParsedToken(request)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusUnauthorized)
+				return
+			}
+		} else {
+			// access without token = admin
+			token = auth.Token{
+				Sub: notification.UserId,
+			}
 		}
 		if notification.UserId == "" {
 			notification.UserId = token.GetUserId()
