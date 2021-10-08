@@ -1,0 +1,10 @@
+{
+    "api_port": "5000",
+    "mongo_addr": "localhost",
+    "mongo_port": "27017",
+    "mongo_table": "db",
+    "mongo_notification_collection": "notifications",
+    "debug": false,
+    "ws_ping_period": "10s",
+    "jwt_signing_key": ""
+}

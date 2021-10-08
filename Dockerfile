@@ -1,9 +1,20 @@
-FROM python:3.9
-LABEL org.opencontainers.image.source https://github.com/SENERGY-Platform/notifier
+FROM golang:1.17 AS builder
+
+COPY . /go/src/app
+WORKDIR /go/src/app
+
+ENV GO111MODULE=on
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o app
+
+RUN git log -1 --oneline > version.txt
+
+FROM alpine:latest
+WORKDIR /root/
+COPY --from=builder /go/src/app/app .
+COPY --from=builder /go/src/app/config.json .
+COPY --from=builder /go/src/app/version.txt .
 
 EXPOSE 5000
-ADD . /opt/app
-WORKDIR /opt/app
-RUN pip install --no-cache-dir -r requirements.txt
-USER 1000
-CMD [ "uwsgi", "--http", ":5000", "--http-websockets", "--gevent", "100", "--wsgi", "main" ]
+
+ENTRYPOINT ["./app"]

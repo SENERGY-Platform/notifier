@@ -1,6 +1,2 @@
-test.db
 .idea
-__pycache__
-venv
-.env
 *.iml
