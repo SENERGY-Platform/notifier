@@ -59,7 +59,7 @@ func (this *Controller) SetNotification(token auth.Token, notification model.Not
 	}
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
-		this.handleWsNotificationUpdate(token.GetUserId(), notification)
+		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
 	}
 	return notification, err, errCode
 }
@@ -74,7 +74,7 @@ func (this *Controller) CreateNotification(token auth.Token, notification model.
 	}
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
-		this.handleWsNotificationUpdate(token.GetUserId(), notification)
+		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
 	}
 	return notification, err, errCode
 }
@@ -82,7 +82,7 @@ func (this *Controller) CreateNotification(token auth.Token, notification model.
 func (this *Controller) DeleteMultipleNotifications(token auth.Token, ids []string) (err error, errCode int) {
 	err, errCode = this.db.RemoveNotifications(token.GetUserId(), ids)
 	if err == nil {
-		this.handleWsNotificationDelete(token.GetUserId(), ids)
+		go this.handleWsNotificationDelete(token.GetUserId(), ids)
 	}
 	return
 }
