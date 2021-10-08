@@ -114,7 +114,7 @@ func listNotifications(config configuration.Config, userId string, expected mode
 			t.Error(err)
 			return
 		}
-		req, err := http.NewRequest("GET", "http://localhost:"+config.ApiPort+"?limit=10", nil)
+		req, err := http.NewRequest("GET", "http://localhost:"+config.ApiPort+"/notifications?limit=10", nil)
 		if err != nil {
 			t.Error(err)
 			return
@@ -157,7 +157,7 @@ func createNotification(config configuration.Config, userId string, notification
 	if err != nil {
 		return
 	}
-	req, err := http.NewRequest("POST", "http://localhost:"+config.ApiPort, b)
+	req, err := http.NewRequest("POST", "http://localhost:"+config.ApiPort+"/notifications", b)
 	if err != nil {
 		return
 	}
@@ -187,7 +187,7 @@ func createNotificationLegacy(config configuration.Config, userId string, notifi
 	if err != nil {
 		return
 	}
-	req, err := http.NewRequest("PUT", "http://localhost:"+config.ApiPort, b)
+	req, err := http.NewRequest("PUT", "http://localhost:"+config.ApiPort+"/notifications", b)
 	if err != nil {
 		return
 	}
@@ -216,7 +216,7 @@ func updateNotification(config configuration.Config, userId string, notification
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("PUT", "http://localhost:"+config.ApiPort+"/"+notification.Id, b)
+	req, err := http.NewRequest("PUT", "http://localhost:"+config.ApiPort+"/notifications/"+notification.Id, b)
 	if err != nil {
 		return err
 	}
@@ -239,7 +239,7 @@ func readNotification(config configuration.Config, userId string, id string, exp
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("GET", "http://localhost:"+config.ApiPort+"/"+id, nil)
+	req, err := http.NewRequest("GET", "http://localhost:"+config.ApiPort+"/notifications/"+id, nil)
 	if err != nil {
 		return err
 	}
@@ -271,7 +271,7 @@ func deleteNotification(config configuration.Config, userId string, id string) e
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("DELETE", "http://localhost:"+config.ApiPort+"/"+id, nil)
+	req, err := http.NewRequest("DELETE", "http://localhost:"+config.ApiPort+"/notifications/"+id, nil)
 	if err != nil {
 		return err
 	}

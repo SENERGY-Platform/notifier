@@ -33,7 +33,7 @@ func init() {
 }
 
 func NotificationsEndpoints(_ configuration.Config, control Controller, router *mux.Router) {
-	resource := "/"
+	resource := "/notifications"
 
 	router.HandleFunc(resource, func(writer http.ResponseWriter, request *http.Request) {
 		token, err := auth.GetParsedToken(request)
@@ -135,7 +135,7 @@ func NotificationsEndpoints(_ configuration.Config, control Controller, router *
 		return
 	}).Methods(http.MethodPut, http.MethodPost, http.MethodOptions) //legacy uses PUT
 
-	router.HandleFunc(resource+"{id}", func(writer http.ResponseWriter, request *http.Request) {
+	router.HandleFunc(resource+"/{id}", func(writer http.ResponseWriter, request *http.Request) {
 		id := mux.Vars(request)["id"]
 		token, err := auth.GetParsedToken(request)
 		if err != nil {
@@ -155,7 +155,7 @@ func NotificationsEndpoints(_ configuration.Config, control Controller, router *
 		return
 	}).Methods(http.MethodGet, http.MethodOptions)
 
-	router.HandleFunc(resource+"{id}", func(writer http.ResponseWriter, request *http.Request) {
+	router.HandleFunc(resource+"/{id}", func(writer http.ResponseWriter, request *http.Request) {
 		id := mux.Vars(request)["id"]
 		token, err := auth.GetParsedToken(request)
 		if err != nil {
@@ -171,7 +171,7 @@ func NotificationsEndpoints(_ configuration.Config, control Controller, router *
 		return
 	}).Methods(http.MethodDelete, http.MethodOptions)
 
-	router.HandleFunc(resource+"{id}", func(writer http.ResponseWriter, request *http.Request) {
+	router.HandleFunc(resource+"/{id}", func(writer http.ResponseWriter, request *http.Request) {
 		id := mux.Vars(request)["id"]
 		notification := model.Notification{}
 		err := json.NewDecoder(request.Body).Decode(&notification)
