@@ -10,12 +10,14 @@ import (
 	"github.com/gorilla/websocket"
 	"log"
 	"runtime/debug"
+	"sync"
 )
 
 type WsSession struct {
 	conn  *websocket.Conn
 	token *auth.Token
 	id    string
+	mutex sync.Mutex
 }
 
 var unauthenticatedUserId = ""
@@ -23,8 +25,9 @@ var unauthenticatedUserId = ""
 func (this *Controller) HandleWs(conn *websocket.Conn) {
 	connId := conn.RemoteAddr().String()
 	session := WsSession{
-		conn: conn,
-		id:   connId,
+		conn:  conn,
+		id:    connId,
+		mutex: sync.Mutex{},
 	}
 	this.addSession(&session, &unauthenticatedUserId) // userId not known yet
 	defer func() {
@@ -84,15 +87,17 @@ func (this *Controller) HandleWs(conn *websocket.Conn) {
 	<-ctx.Done()
 }
 
-func (this *Controller) wsSend(conn *websocket.Conn, wsType string, payload interface{}) error {
-	return conn.WriteJSON(model.EventMessage{
+func (this *Controller) wsSend(session *WsSession, wsType string, payload interface{}) error {
+	session.mutex.Lock()
+	defer session.mutex.Unlock()
+	return session.conn.WriteJSON(model.EventMessage{
 		Type:    wsType,
 		Payload: payload,
 	})
 }
 
-func (this *Controller) wsSendAuthRequest(conn *websocket.Conn) error {
-	return this.wsSend(conn, model.WsAuthRequestType, nil)
+func (this *Controller) wsSendAuthRequest(session *WsSession) error {
+	return this.wsSend(session, model.WsAuthRequestType, nil)
 }
 
 func (this *Controller) handleWsAuth(session *WsSession, msg model.EventMessage) error {
@@ -101,19 +106,19 @@ func (this *Controller) handleWsAuth(session *WsSession, msg model.EventMessage)
 	err := this.removeSession(session, false)
 	tokenString, ok := msg.Payload.(string)
 	if !ok {
-		return this.wsSendAuthRequest(session.conn)
+		return this.wsSendAuthRequest(session)
 	}
 	token, err := auth.ParseAndValidateToken(tokenString, this.config.JwtSigningKey)
 	if err != nil {
-		return this.wsSendAuthRequest(session.conn)
+		return this.wsSendAuthRequest(session)
 	}
 	if token.IsExpired() {
-		return this.wsSendAuthRequest(session.conn)
+		return this.wsSendAuthRequest(session)
 	}
 
 	session.token = &token
 	user = session.token.GetUserId()
-	err = this.wsSend(session.conn, model.WsAuthOkType, nil)
+	err = this.wsSend(session, model.WsAuthOkType, nil)
 	return err
 }
 
@@ -122,19 +127,19 @@ func (this *Controller) handleWsNotificationUpdate(userId string, notification m
 	if !ok {
 		return
 	}
-	for _, session := range sessions {
-		session := session // thread safety
+	for i := range sessions {
+		i := i // thread safety
 		go func() {
-			if session.token == nil || session.token.IsExpired() {
-				err := this.wsSendAuthRequest(session.conn)
+			if sessions[i].token == nil || sessions[i].token.IsExpired() {
+				err := this.wsSendAuthRequest(sessions[i])
 				if err != nil {
 					log.Println("ERROR: unable to send auth request", err)
 				}
 				return
 			}
-			err := this.wsSend(session.conn, model.WsUpdateSetType, notification)
+			err := this.wsSend(sessions[i], model.WsUpdateSetType, notification)
 			if err != nil {
-				log.Println("ERROR: unable to notify session", session.id)
+				log.Println("ERROR: unable to notify session", sessions[i].id)
 			}
 		}()
 	}
@@ -145,20 +150,20 @@ func (this *Controller) handleWsNotificationDelete(userId string, ids []string) 
 	if !ok {
 		return
 	}
-	for _, session := range sessions {
-		session := session // thread safety
+	for i := range sessions {
+		i := i // thread safety
 		go func() {
-			if session.token == nil || session.token.IsExpired() {
-				err := this.wsSendAuthRequest(session.conn)
+			if sessions[i].token == nil || sessions[i].token.IsExpired() {
+				err := this.wsSendAuthRequest(sessions[i])
 				if err != nil {
 					log.Println("ERROR: unable to send auth request", err)
 				}
 				return
 			}
 			for _, id := range ids {
-				err := this.wsSend(session.conn, model.WsUpdateDeleteType, id)
+				err := this.wsSend(sessions[i], model.WsUpdateDeleteType, id)
 				if err != nil {
-					log.Println("ERROR: unable to notify session", session.id)
+					log.Println("ERROR: unable to notify session", sessions[i].id)
 				}
 			}
 		}()
@@ -167,7 +172,7 @@ func (this *Controller) handleWsNotificationDelete(userId string, ids []string) 
 
 func (this *Controller) handleWsRefresh(session *WsSession) error {
 	if session.token == nil || session.token.IsExpired() {
-		return this.wsSendAuthRequest(session.conn)
+		return this.wsSendAuthRequest(session)
 	}
 	list, err, _ := this.ListNotifications(*session.token, persistence.ListOptions{
 		Limit:  1000000,
@@ -176,7 +181,7 @@ func (this *Controller) handleWsRefresh(session *WsSession) error {
 	if err != nil {
 		return err
 	}
-	return this.wsSend(session.conn, model.WsListType, list.Notifications)
+	return this.wsSend(session, model.WsListType, list.Notifications)
 }
 
 func (this *Controller) removeSession(session *WsSession, close bool) (err error) {
@@ -186,11 +191,11 @@ func (this *Controller) removeSession(session *WsSession, close bool) (err error
 	}
 	this.sessionsMux.Lock()
 	defer this.sessionsMux.Unlock()
-	for i, s := range this.sessions[user] {
-		if s.id == session.id {
+	for i := range this.sessions[user] {
+		if this.sessions[user][i].id == session.id {
 			this.sessions[user] = remove(this.sessions[user], i)
 			if close {
-				return s.conn.Close()
+				return session.conn.Close()
 			}
 			return nil
 		}
@@ -199,7 +204,7 @@ func (this *Controller) removeSession(session *WsSession, close bool) (err error
 	return errors.New("session not found")
 }
 
-func remove(s []WsSession, i int) []WsSession {
+func remove(s []*WsSession, i int) []*WsSession {
 	s[i] = s[len(s)-1]
 	return s[:len(s)-1]
 }
@@ -209,7 +214,7 @@ func (this *Controller) addSession(session *WsSession, userId *string) {
 	defer this.sessionsMux.Unlock()
 	l, ok := this.sessions[*userId]
 	if !ok {
-		l = []WsSession{}
+		l = []*WsSession{}
 	}
-	this.sessions[*userId] = append(l, *session)
+	this.sessions[*userId] = append(l, session)
 }

@@ -19,7 +19,7 @@ type Controller struct {
 	config      configuration.Config
 	db          Persistence
 	sessionsMux sync.Mutex
-	sessions    map[string][]WsSession
+	sessions    map[string][]*WsSession
 }
 
 func New(config configuration.Config, db Persistence) *Controller {
@@ -27,7 +27,7 @@ func New(config configuration.Config, db Persistence) *Controller {
 		config:      config,
 		db:          db,
 		sessionsMux: sync.Mutex{},
-		sessions:    make(map[string][]WsSession),
+		sessions:    make(map[string][]*WsSession),
 	}
 }
 
