@@ -50,8 +50,13 @@ func (this *Controller) HandleWs(conn *websocket.Conn) {
 		for {
 			msg := model.EventMessage{}
 			t, bytes, err := conn.ReadMessage()
-			if err != nil && websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived, websocket.CloseGoingAway) {
-				return
+			if err != nil {
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					return
+				} else {
+					log.Println("Unexpected error", session.id, err.Error())
+					return
+				}
 			}
 			if t == websocket.CloseMessage {
 				return
