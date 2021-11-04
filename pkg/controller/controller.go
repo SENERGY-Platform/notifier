@@ -37,7 +37,7 @@ type Controller struct {
 
 func New(config configuration.Config, db Persistence) *Controller {
 	var publisher *mqtt.Publisher
-	if config.PlatformMqttAddress != "" {
+	if config.PlatformMqttAddress != "" && config.PlatformMqttAddress != "-" {
 		var err error
 		publisher, err = mqtt.NewPublisher(context.Background(), config.PlatformMqttAddress, config.PlatformMqttUser,
 			config.PlatformMqttPw, config.MqttClientPrefix+uuid.NewV4().String(), config.PlatformMqttQos, config.Debug)
