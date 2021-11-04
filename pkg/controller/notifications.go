@@ -48,6 +48,7 @@ func (this *Controller) SetNotification(token auth.Token, notification model.Not
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
 		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
+		go this.handleMqttNotificationUpdate(token.GetUserId(), notification)
 	}
 	return notification, err, errCode
 }
@@ -63,6 +64,7 @@ func (this *Controller) CreateNotification(token auth.Token, notification model.
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
 		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
+		go this.handleMqttNotificationUpdate(token.GetUserId(), notification)
 	}
 	return notification, err, errCode
 }

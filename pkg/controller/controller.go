@@ -17,25 +17,40 @@
 package controller
 
 import (
+	"context"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
+	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
+	uuid "github.com/satori/go.uuid"
+	"log"
 	"sync"
 )
 
 type Controller struct {
-	config      configuration.Config
-	db          Persistence
-	sessionsMux sync.Mutex
-	sessions    map[string][]*WsSession
+	config                configuration.Config
+	db                    Persistence
+	sessionsMux           sync.Mutex
+	sessions              map[string][]*WsSession
+	platformMqttPublisher *mqtt.Publisher
 }
 
 func New(config configuration.Config, db Persistence) *Controller {
+	var publisher *mqtt.Publisher
+	if config.PlatformMqttAddress != "" {
+		var err error
+		publisher, err = mqtt.NewPublisher(context.Background(), config.PlatformMqttAddress, config.PlatformMqttUser,
+			config.PlatformMqttPw, config.MqttClientPrefix+uuid.NewV4().String(), config.PlatformMqttQos, config.Debug)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}
 	return &Controller{
-		config:      config,
-		db:          db,
-		sessionsMux: sync.Mutex{},
-		sessions:    make(map[string][]*WsSession),
+		config:                config,
+		db:                    db,
+		sessionsMux:           sync.Mutex{},
+		sessions:              make(map[string][]*WsSession),
+		platformMqttPublisher: publisher,
 	}
 }
 
@@ -46,6 +61,7 @@ type Persistence interface {
 	RemoveNotifications(userId string, ids []string) (err error, errCode int)
 
 	ListBrokers(userId string, options persistence.ListOptions) (result []model.Broker, total int64, err error, errCode int)
+	ListEnabledBrokers(userId string) (result []model.Broker, err error)
 	ReadBroker(userId string, id string) (result model.Broker, err error, errCode int)
 	SetBroker(broker model.Broker) (err error, errCode int)
 	RemoveBrokers(userId string, ids []string) (err error, errCode int)

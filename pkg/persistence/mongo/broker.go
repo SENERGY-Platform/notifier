@@ -28,6 +28,7 @@ import (
 
 var brokerUserIdKey = "user_id"
 var brokerIdKey = "id"
+var brokerEnabledKey = "enabled"
 
 func initBrokers() {
 	var err error
@@ -149,4 +150,30 @@ func (this *Mongo) RemoveBrokers(userId string, ids []string) (error, int) {
 		return err, http.StatusInternalServerError
 	}
 	return nil, http.StatusOK
+}
+
+func (this *Mongo) ListEnabledBrokers(userId string) (result []model.Broker, err error) {
+	result = []model.Broker{}
+
+	ctx, _ := getTimeoutContext()
+	collection := this.brokerCollection()
+	filter := bson.M{"$and": []bson.M{
+		{brokerUserIdKey: userId},
+		{brokerEnabledKey: true},
+	}}
+
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return result, err
+	}
+	for cursor.Next(ctx) {
+		element := model.Broker{}
+		err = cursor.Decode(&element)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, element)
+	}
+	err = cursor.Err()
+	return
 }

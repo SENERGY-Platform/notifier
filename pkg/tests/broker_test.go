@@ -272,6 +272,38 @@ func updateBroker(config configuration.Config, userId string, broker model.Broke
 	return
 }
 
+func setPlatformBroker(config configuration.Config, userId string, platformBroker model.PlatformBroker) (result model.PlatformBroker, err error) {
+	token, err := createToken(userId)
+	if err != nil {
+		return result, err
+	}
+	b := new(bytes.Buffer)
+	err = json.NewEncoder(b).Encode(platformBroker)
+	if err != nil {
+		return result, err
+	}
+	req, err := http.NewRequest("PUT", "http://localhost:"+config.ApiPort+"/platform-broker", b)
+	if err != nil {
+		return result, err
+	}
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	req.WithContext(ctx)
+	req.Header.Set("Authorization", token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return result, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return result, errors.New(string(b))
+	}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return result, err
+	}
+	return
+}
+
 func readBroker(config configuration.Config, userId string, id string, expected model.Broker) error {
 	token, err := createToken(userId)
 	if err != nil {

@@ -38,6 +38,12 @@ type Config struct {
 	Debug                         bool   `json:"debug"`
 	JwtSigningKey                 string `json:"jwt_signing_key"` //without -----BEGIN PUBLIC KEY-----
 	WsPingPeriod                  string `json:"ws_ping_period"`
+	PlatformMqttAddress           string `json:"platform_mqtt_address"`
+	PlatformMqttUser              string `json:"platform_mqtt_user"`
+	PlatformMqttPw                string `json:"platform_mqtt_pw"`
+	PlatformMqttQos               uint8  `json:"platform_mqtt_qos"`
+	PlatformMqttBasetopic         string `json:"platform_mqtt_basetopic"`
+	MqttClientPrefix              string `json:"mqtt_client_prefix"`
 }
 
 //loads config from json in location and used environment variables (e.g ZookeeperUrl --> ZOOKEEPER_URL)
@@ -85,6 +91,10 @@ func handleEnvironmentVars(config *Config) {
 			if configValue.FieldByName(fieldName).Kind() == reflect.Int64 {
 				i, _ := strconv.ParseInt(envValue, 10, 64)
 				configValue.FieldByName(fieldName).SetInt(i)
+			}
+			if configValue.FieldByName(fieldName).Kind() == reflect.Uint8 {
+				i, _ := strconv.ParseUint(envValue, 10, 8)
+				configValue.FieldByName(fieldName).SetUint(i)
 			}
 			if configValue.FieldByName(fieldName).Kind() == reflect.String {
 				configValue.FieldByName(fieldName).SetString(envValue)

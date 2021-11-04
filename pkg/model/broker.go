@@ -24,6 +24,7 @@ type Broker struct {
 	User      string    `json:"user"`
 	Password  string    `json:"password"`
 	Topic     string    `json:"topic"`
+	Qos       uint8     `json:"qos"`
 	Enabled   bool      `json:"enabled"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`

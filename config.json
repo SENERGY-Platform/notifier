@@ -8,5 +8,11 @@
     "mongo_platformbroker_collection": "platformbroker",
     "debug": false,
     "ws_ping_period": "10s",
-    "jwt_signing_key": ""
+    "jwt_signing_key": "",
+    "platform_mqtt_address": "localhost",
+    "platform_mqtt_user": "",
+    "platform_mqtt_pw": "",
+    "platform_mqtt_qos": 1,
+    "platform_mqtt_basetopic": "notifications",
+    "mqtt_client_prefix": "senergy-notifier-"
 }
