@@ -20,7 +20,7 @@ var notificationUserIdKey = "userId"
 var notificationCreatedAtKey string
 var notificationIdKey = "_id"
 
-func init() {
+func initNotifications() {
 	var err error
 	notificationTitleKey, err = getBsonFieldPath(model.Notification{}, notificationTitleFieldName)
 	if err != nil {

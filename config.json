@@ -4,6 +4,8 @@
     "mongo_port": "27017",
     "mongo_table": "db",
     "mongo_notification_collection": "notifications",
+    "mongo_broker_collection": "brokers",
+    "mongo_platformbroker_collection": "platformbroker",
     "debug": false,
     "ws_ping_period": "10s",
     "jwt_signing_key": ""

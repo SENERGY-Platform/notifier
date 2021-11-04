@@ -1,10 +1,7 @@
 package tests
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"github.com/SENERGY-Platform/notifier/pkg"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
@@ -14,10 +11,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"io"
 	"log"
 	"net"
-	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -105,188 +100,6 @@ func TestInit(t *testing.T) {
 		Limit:  10,
 		Offset: 0,
 	}))
-}
-
-func listNotifications(config configuration.Config, userId string, expected model.NotificationList) func(t *testing.T) {
-	return func(t *testing.T) {
-		token, err := createToken(userId)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		req, err := http.NewRequest("GET", "http://localhost:"+config.ApiPort+"/notifications?limit=10", nil)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-		req.WithContext(ctx)
-		req.Header.Set("Authorization", token)
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		if resp.StatusCode != http.StatusOK {
-			b, _ := io.ReadAll(resp.Body)
-			t.Error(resp.StatusCode, string(b))
-			return
-		}
-		actual := model.NotificationList{}
-		err = json.NewDecoder(resp.Body).Decode(&actual)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-
-		if !actual.Equal(expected) {
-			t.Error(actual, expected)
-			return
-		}
-	}
-}
-
-func createNotification(config configuration.Config, userId string, notification model.Notification) (result model.Notification, err error) {
-	var token string
-	token, err = createToken(userId)
-	if err != nil {
-		return
-	}
-	b := new(bytes.Buffer)
-	err = json.NewEncoder(b).Encode(notification)
-	if err != nil {
-		return
-	}
-	req, err := http.NewRequest("POST", "http://localhost:"+config.ApiPort+"/notifications", b)
-	if err != nil {
-		return
-	}
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	req.WithContext(ctx)
-	req.Header.Set("Authorization", token)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		return result, errors.New(string(b))
-	}
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	return
-}
-
-func createNotificationLegacy(config configuration.Config, userId string, notification model.Notification) (result model.Notification, err error) {
-	var token string
-	token, err = createToken(userId)
-	if err != nil {
-		return
-	}
-	b := new(bytes.Buffer)
-	err = json.NewEncoder(b).Encode(notification)
-	if err != nil {
-		return
-	}
-	req, err := http.NewRequest("PUT", "http://localhost:"+config.ApiPort+"/notifications", b)
-	if err != nil {
-		return
-	}
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	req.WithContext(ctx)
-	req.Header.Set("Authorization", token)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		return result, errors.New(string(b))
-	}
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	return
-}
-
-func updateNotification(config configuration.Config, userId string, notification model.Notification) error {
-	token, err := createToken(userId)
-	if err != nil {
-		return err
-	}
-	b := new(bytes.Buffer)
-	err = json.NewEncoder(b).Encode(notification)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("PUT", "http://localhost:"+config.ApiPort+"/notifications/"+notification.Id, b)
-	if err != nil {
-		return err
-	}
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	req.WithContext(ctx)
-	req.Header.Set("Authorization", token)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		return errors.New(string(b))
-	}
-	return nil
-}
-
-func readNotification(config configuration.Config, userId string, id string, expected model.Notification) error {
-	token, err := createToken(userId)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("GET", "http://localhost:"+config.ApiPort+"/notifications/"+id, nil)
-	if err != nil {
-		return err
-	}
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	req.WithContext(ctx)
-	req.Header.Set("Authorization", token)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		return errors.New(string(b))
-	}
-	actual := model.Notification{}
-	err = json.NewDecoder(resp.Body).Decode(&actual)
-	if err != nil {
-		return err
-	}
-
-	if !actual.Equal(expected) {
-		return errors.New("actual not expected")
-	}
-	return nil
-}
-
-func deleteNotification(config configuration.Config, userId string, id string) error {
-	token, err := createToken(userId)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("DELETE", "http://localhost:"+config.ApiPort+"/notifications/"+id, nil)
-	if err != nil {
-		return err
-	}
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	req.WithContext(ctx)
-	req.Header.Set("Authorization", token)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		return errors.New(string(b))
-	}
-	return nil
 }
 
 func createToken(userId string) (token string, err error) {

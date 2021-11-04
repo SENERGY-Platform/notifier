@@ -72,4 +72,14 @@ type Controller interface {
 	SetNotification(token auth.Token, notification model.Notification) (result model.Notification, err error, errCode int)
 	DeleteMultipleNotifications(token auth.Token, ids []string) (err error, errCode int)
 	HandleWs(conn *websocket.Conn)
+
+	ListBrokers(token auth.Token, options persistence.ListOptions) (result model.BrokerList, err error, errCode int)
+	ReadBroker(token auth.Token, id string) (result model.Broker, err error, errCode int)
+	CreateBroker(token auth.Token, broker model.Broker) (result model.Broker, err error, errCode int)
+	SetBroker(token auth.Token, broker model.Broker) (result model.Broker, err error, errCode int)
+	DeleteMultipleBrokers(token auth.Token, ids []string) (err error, errCode int)
+
+	GetPlatformBroker(token auth.Token) (platformBroker model.PlatformBroker, err error, errCode int)
+	SetPlatformBroker(token auth.Token, platformBroker model.PlatformBroker) (result model.PlatformBroker, err error, errCode int)
+	DeletePlatformBroker(token auth.Token) (err error, errCode int)
 }

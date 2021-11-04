@@ -12,14 +12,16 @@ import (
 )
 
 type Config struct {
-	ApiPort                     string `json:"api_port"`
-	MongoAddr                   string `json:"mongo_addr"`
-	MongoPort                   string `json:"mongo_port"`
-	MongoTable                  string `json:"mongo_table"`
-	MongoNotificationCollection string `json:"mongo_notification_collection"`
-	Debug                       bool   `json:"debug"`
-	JwtSigningKey               string `json:"jwt_signing_key"` //without -----BEGIN PUBLIC KEY-----
-	WsPingPeriod                string `json:"ws_ping_period"`
+	ApiPort                       string `json:"api_port"`
+	MongoAddr                     string `json:"mongo_addr"`
+	MongoPort                     string `json:"mongo_port"`
+	MongoTable                    string `json:"mongo_table"`
+	MongoNotificationCollection   string `json:"mongo_notification_collection"`
+	MongoBrokerCollection         string `json:"mongo_broker_collection"`
+	MongoPlatformBrokerCollection string `json:"mongo_platformbroker_collection"`
+	Debug                         bool   `json:"debug"`
+	JwtSigningKey                 string `json:"jwt_signing_key"` //without -----BEGIN PUBLIC KEY-----
+	WsPingPeriod                  string `json:"ws_ping_period"`
 }
 
 //loads config from json in location and used environment variables (e.g ZookeeperUrl --> ZOOKEEPER_URL)

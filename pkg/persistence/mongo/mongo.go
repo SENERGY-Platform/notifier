@@ -28,6 +28,9 @@ func New(conf configuration.Config) (*Mongo, error) {
 		return nil, err
 	}
 	db := &Mongo{config: conf, client: client}
+	initNotifications()
+	initBrokers()
+	initPlatformBrokers()
 	for _, creators := range CreateCollections {
 		err = creators(db)
 		if err != nil {

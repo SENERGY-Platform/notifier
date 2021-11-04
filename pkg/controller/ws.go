@@ -11,6 +11,7 @@ import (
 	"log"
 	"runtime/debug"
 	"sync"
+	"time"
 )
 
 type WsSession struct {
@@ -222,4 +223,27 @@ func (this *Controller) addSession(session *WsSession, userId *string) {
 		l = []*WsSession{}
 	}
 	this.sessions[*userId] = append(l, session)
+}
+
+func (this *Controller) startPing(ctx context.Context, conn *websocket.Conn) (err error) {
+	pingPeriod, err := time.ParseDuration(this.config.WsPingPeriod)
+	if err != nil {
+		return err
+	}
+	go func() {
+		ticker := time.NewTicker(pingPeriod)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				err := conn.WriteMessage(websocket.PingMessage, nil)
+				if err != nil {
+					log.Println("ERROR: sending ws ping:", err)
+					return
+				}
+			}
+		}
+	}()
+	return nil
 }
