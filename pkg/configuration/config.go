@@ -44,6 +44,16 @@ type Config struct {
 	PlatformMqttQos               uint8  `json:"platform_mqtt_qos"`
 	PlatformMqttBasetopic         string `json:"platform_mqtt_basetopic"`
 	MqttClientPrefix              string `json:"mqtt_client_prefix"`
+
+	KeycloakUrl          string `json:"keycloak_url"`
+	KeycloakRealm        string `json:"keycloak_realm"`
+	KeycloakClientId     string `json:"keycloak_client_id"`
+	KeycloakClientSecret string `json:"keycloak_client_secret"`
+	VaultUrl             string `json:"vault_url"`
+	VaultRole            string `json:"vault_role"`
+	VaultEngineBroker    string `json:"vault_engine_broker"`
+	VaultCleanupKeys     bool   `json:"vault_cleanup_keys"`
+	VaultEnsureMigration bool   `json:"vault_ensure_migration"`
 }
 
 //loads config from json in location and used environment variables (e.g ZookeeperUrl --> ZOOKEEPER_URL)

@@ -20,10 +20,13 @@ import (
 	"errors"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
+	"github.com/SENERGY-Platform/notifier/pkg/persistence/vault"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
 	"net/http"
+	"time"
 )
 
 var brokerUserIdKey = "user_id"
@@ -57,7 +60,10 @@ func (this *Mongo) ListBrokers(userId string, o persistence.ListOptions) (result
 	opt.SetLimit(int64(o.Limit))
 	opt.SetSkip(int64(o.Offset))
 
-	filter := bson.M{brokerUserIdKey: userId}
+	filter := bson.M{}
+	if userId != "" {
+		filter[brokerUserIdKey] = userId
+	}
 
 	ctx, _ := getTimeoutContext()
 	collection := this.brokerCollection()
@@ -79,19 +85,32 @@ func (this *Mongo) ListBrokers(userId string, o persistence.ListOptions) (result
 		result = append(result, element)
 	}
 	err = cursor.Err()
+	if err != nil {
+		return nil, total, err, http.StatusInternalServerError
+	}
+	result, err = this.brokerManager.FillList(result)
+	if err != nil {
+		return nil, total, err, http.StatusInternalServerError
+	}
 	return
 }
 
 func (this *Mongo) ReadBroker(userId string, id string) (result model.Broker, err error, errCode int) {
 	ctx, _ := getTimeoutContext()
-	temp := this.brokerCollection().FindOne(
-		ctx,
-		bson.M{
+	var filter bson.M
+	if userId != "" {
+		filter = bson.M{
 			"$and": []bson.M{
 				{brokerIdKey: id},
 				{brokerUserIdKey: userId},
 			},
-		})
+		}
+	} else {
+		filter = bson.M{brokerIdKey: id}
+	}
+	temp := this.brokerCollection().FindOne(
+		ctx,
+		filter)
 	err = temp.Err()
 	if err == mongo.ErrNoDocuments {
 		return result, err, http.StatusNotFound
@@ -106,12 +125,20 @@ func (this *Mongo) ReadBroker(userId string, id string) (result model.Broker, er
 	if err != nil {
 		return result, err, http.StatusInternalServerError
 	}
+	err = this.brokerManager.Fill(&result)
+	if err != nil {
+		return result, err, http.StatusInternalServerError
+	}
 	return result, nil, http.StatusOK
 }
 
 func (this *Mongo) SetBroker(broker model.Broker) (error, int) {
+	err := this.brokerManager.SaveAndStrip(&broker)
+	if err != nil {
+		return err, http.StatusInternalServerError
+	}
 	ctx, _ := getTimeoutContext()
-	_, err := this.brokerCollection().ReplaceOne(
+	_, err = this.brokerCollection().ReplaceOne(
 		ctx,
 		bson.M{
 			brokerIdKey: broker.Id,
@@ -149,6 +176,10 @@ func (this *Mongo) RemoveBrokers(userId string, ids []string) (error, int) {
 	if err != nil {
 		return err, http.StatusInternalServerError
 	}
+	err = this.brokerManager.Delete(ids)
+	if err != nil {
+		return err, http.StatusInternalServerError
+	}
 	return nil, http.StatusOK
 }
 
@@ -175,5 +206,77 @@ func (this *Mongo) ListEnabledBrokers(userId string) (result []model.Broker, err
 		result = append(result, element)
 	}
 	err = cursor.Err()
+	if err != nil {
+		return nil, err
+	}
+	result, err = this.brokerManager.FillList(result)
+	if err != nil {
+		return nil, err
+	}
 	return
+}
+
+func (this *Mongo) HandlerBrokerMongoVaultConsistency(cleanupVaultKeys bool) (err error) {
+	start := time.Now()
+	vaultList, err := this.brokerManager.ListKeys()
+	if err != nil {
+		return err
+	}
+	deleteKeys := []string{}
+	for _, id := range vaultList {
+		_, err, _ = this.ReadBroker("", id)
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				log.Println("WARN: Vault has data for id " + id + ", but mongo entry missing")
+				deleteKeys = append(deleteKeys, id)
+			} else {
+				return err
+			}
+		}
+	}
+	if cleanupVaultKeys {
+		log.Println("WARN: Deleting vault keys that have no mongo entries")
+		err = this.brokerManager.Delete(deleteKeys)
+		if err != nil {
+			return err
+		}
+	}
+	log.Println("INFO: Consistency checks took " + time.Since(start).String())
+	return nil
+}
+
+func (this *Mongo) MigrateSecretsToVault() (err error) {
+	start := time.Now()
+	var offset int64 = 0
+	var batchSize int64 = 100
+	ctx, _ := getTimeoutContext()
+	collection := this.brokerCollection()
+	total, err := collection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		return err
+	}
+	opt := options.Find()
+	for total > offset {
+		ctx, _ := getTimeoutContext()
+		opt.SetLimit(batchSize)
+		opt.SetSkip(offset)
+		cursor, err := collection.Find(ctx, bson.M{}, opt)
+		for cursor.Next(ctx) {
+			element := model.Broker{}
+			err = cursor.Decode(&element)
+			if err != nil {
+				return err
+			}
+			if vault.NeedsMigration(&element) {
+				log.Println("INFO: Migrating broker " + element.Id)
+				err, _ = this.SetBroker(element)
+				if err != nil {
+					return err
+				}
+			}
+			offset++
+		}
+	}
+	log.Println("INFO: Migration took " + time.Since(start).String())
+	return nil
 }

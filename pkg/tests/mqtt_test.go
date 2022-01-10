@@ -17,61 +17,37 @@
 package tests
 
 import (
-	"context"
 	"encoding/json"
 	"github.com/SENERGY-Platform/notifier/pkg"
-	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
 	paho "github.com/eclipse/paho.mqtt.golang"
 	uuid "github.com/satori/go.uuid"
-	"strconv"
-	"sync"
 	"testing"
 	"time"
 )
 
 func TestMQTT(t *testing.T) {
-	wg := &sync.WaitGroup{}
+	wg, ctx, cancel, conf, err := setup()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := configuration.Load("./../../config.json")
-	if err != nil {
-		t.Fatal("ERROR: unable to load config", err)
-	}
-
-	config.Debug = true
-
-	mongoPort, _, err := MongoContainer(ctx, wg)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	config.MongoAddr = "localhost"
-	config.MongoPort = mongoPort
-
-	config.PlatformMqttAddress, err = MqttContainer(ctx, wg)
+	conf.PlatformMqttAddress, err = MqttContainer(ctx, wg)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	freePort, err := getFreePort()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	config.ApiPort = strconv.Itoa(freePort)
-
-	err = pkg.Start(ctx, wg, config)
+	err = pkg.Start(ctx, wg, conf)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	_, err = setPlatformBroker(config, "user1", model.PlatformBroker{
+	_, err = setPlatformBroker(conf, "user1", model.PlatformBroker{
 		Enabled: true,
 	})
 	if err != nil {
@@ -79,8 +55,8 @@ func TestMQTT(t *testing.T) {
 	}
 	topic1, topic2, topic3 := "topic1", "topic2", "topic3"
 
-	_, err = createBroker(config, "user1", model.Broker{
-		Address: config.PlatformMqttAddress,
+	_, err = createBroker(conf, "user1", model.Broker{
+		Address: conf.PlatformMqttAddress,
 		Topic:   topic1,
 		Qos:     2,
 		Enabled: true,
@@ -89,16 +65,16 @@ func TestMQTT(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, err = createBroker(config, "user1", model.Broker{
-		Address: config.PlatformMqttAddress,
+	_, err = createBroker(conf, "user1", model.Broker{
+		Address: conf.PlatformMqttAddress,
 		Topic:   topic2,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
-	_, err = createBroker(config, "user2", model.Broker{
-		Address: config.PlatformMqttAddress,
+	_, err = createBroker(conf, "user2", model.Broker{
+		Address: conf.PlatformMqttAddress,
 		Topic:   topic3,
 		Qos:     2,
 		Enabled: true,
@@ -108,17 +84,17 @@ func TestMQTT(t *testing.T) {
 	}
 
 	msgsU1, msgsU2, msgs1, msgs2, msgs3 := []string{}, []string{}, []string{}, []string{}, []string{}
-	publisher, err := mqtt.NewPublisher(ctx, config.PlatformMqttAddress, config.PlatformMqttUser,
-		config.PlatformMqttPw, "notifier-test-"+uuid.NewV4().String(), config.PlatformMqttQos, config.Debug)
+	publisher, err := mqtt.NewPublisher(ctx, conf.PlatformMqttAddress, conf.PlatformMqttUser,
+		conf.PlatformMqttPw, "notifier-test-"+uuid.NewV4().String(), conf.PlatformMqttQos, conf.Debug)
 	if err != nil {
 		t.Error(err)
 	}
 	mqttClient := publisher.GetClient()
 
-	mqttClient.Subscribe(config.PlatformMqttBasetopic+"/user1", 1, func(_ paho.Client, message paho.Message) {
+	mqttClient.Subscribe(conf.PlatformMqttBasetopic+"/user1", 1, func(_ paho.Client, message paho.Message) {
 		msgsU1 = append(msgsU1, string(message.Payload()))
 	})
-	mqttClient.Subscribe(config.PlatformMqttBasetopic+"/user2", 1, func(_ paho.Client, message paho.Message) {
+	mqttClient.Subscribe(conf.PlatformMqttBasetopic+"/user2", 1, func(_ paho.Client, message paho.Message) {
 		msgsU2 = append(msgsU2, string(message.Payload()))
 	})
 	mqttClient.Subscribe(topic1, 1, func(_ paho.Client, message paho.Message) {
@@ -131,7 +107,7 @@ func TestMQTT(t *testing.T) {
 		msgs3 = append(msgs3, string(message.Payload()))
 	})
 
-	test1, err := createNotification(config, "user1", model.Notification{
+	test1, err := createNotification(conf, "user1", model.Notification{
 		Title: "test1",
 	})
 	if err != nil {
@@ -159,7 +135,7 @@ func TestMQTT(t *testing.T) {
 		t.Error("user2 received mqtt notification of user1")
 	}
 
-	test2, err := createNotification(config, "user2", model.Notification{
+	test2, err := createNotification(conf, "user2", model.Notification{
 		Title: "test1",
 	})
 	if err != nil {

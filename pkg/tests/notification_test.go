@@ -26,52 +26,32 @@ import (
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"io"
 	"net/http"
-	"strconv"
-	"sync"
 	"testing"
 	"time"
 )
 
 func TestNotificationCRUD(t *testing.T) {
-	wg := &sync.WaitGroup{}
+	wg, ctx, cancel, conf, err := setup()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := configuration.Load("./../../config.json")
-	if err != nil {
-		t.Fatal("ERROR: unable to load config", err)
-	}
-
-	mongoPort, _, err := MongoContainer(ctx, wg)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	config.MongoAddr = "localhost"
-	config.MongoPort = mongoPort
-
-	freePort, err := getFreePort()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	config.ApiPort = strconv.Itoa(freePort)
-
-	err = pkg.Start(ctx, wg, config)
+	err = pkg.Start(ctx, wg, conf)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	t.Run("empty list", listNotifications(config, "user1", model.NotificationList{
+	t.Run("empty list", listNotifications(conf, "user1", model.NotificationList{
 		Total:         0,
 		Limit:         10,
 		Offset:        0,
 		Notifications: []model.Notification{},
 	}))
 
-	test1, err := createNotification(config, "user1", model.Notification{
+	test1, err := createNotification(conf, "user1", model.Notification{
 		UserId:  "user1",
 		Title:   "test1",
 		Message: "test1",
@@ -81,12 +61,12 @@ func TestNotificationCRUD(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = readNotification(config, "user1", test1.Id, test1)
+	err = readNotification(conf, "user1", test1.Id, test1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	test2, err := createNotificationLegacy(config, "user1", model.Notification{
+	test2, err := createNotificationLegacy(conf, "user1", model.Notification{
 		UserId:  "user1",
 		Title:   "test2",
 		Message: "test2",
@@ -96,12 +76,12 @@ func TestNotificationCRUD(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = readNotification(config, "user1", test2.Id, test2)
+	err = readNotification(conf, "user1", test2.Id, test2)
 	if err != nil {
 		t.Error(err)
 	}
 
-	test3, err := createNotification(config, "user2", model.Notification{
+	test3, err := createNotification(conf, "user2", model.Notification{
 		UserId:  "user2",
 		Title:   "test3",
 		Message: "test3",
@@ -110,12 +90,12 @@ func TestNotificationCRUD(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = readNotification(config, "user2", test3.Id, test3)
+	err = readNotification(conf, "user2", test3.Id, test3)
 	if err != nil {
 		t.Error(err)
 	}
 
-	t.Run("list user1", listNotifications(config, "user1", model.NotificationList{
+	t.Run("list user1", listNotifications(conf, "user1", model.NotificationList{
 		Total:         2,
 		Limit:         10,
 		Offset:        0,
@@ -123,24 +103,24 @@ func TestNotificationCRUD(t *testing.T) {
 	}))
 
 	test1.IsRead = true
-	err = updateNotification(config, "user1", test1)
+	err = updateNotification(conf, "user1", test1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	t.Run("list user1 after update", listNotifications(config, "user1", model.NotificationList{
+	t.Run("list user1 after update", listNotifications(conf, "user1", model.NotificationList{
 		Total:         2,
 		Limit:         10,
 		Offset:        0,
 		Notifications: []model.Notification{test1, test2},
 	}))
 
-	err = deleteNotification(config, "user1", test2.Id)
+	err = deleteNotification(conf, "user1", test2.Id)
 	if err != nil {
 		t.Error(err)
 	}
 
-	t.Run("list user1 after delete", listNotifications(config, "user1", model.NotificationList{
+	t.Run("list user1 after delete", listNotifications(conf, "user1", model.NotificationList{
 		Total:         1,
 		Limit:         10,
 		Offset:        0,
@@ -149,7 +129,7 @@ func TestNotificationCRUD(t *testing.T) {
 
 	// Try disallowed actions
 
-	_, err = createNotification(config, "user2", model.Notification{
+	_, err = createNotification(conf, "user2", model.Notification{
 		Id:      "1234",
 		UserId:  "user2",
 		Title:   "test3",
@@ -160,7 +140,7 @@ func TestNotificationCRUD(t *testing.T) {
 		t.Error("was allowed to specified ID")
 	}
 
-	_, err = createNotification(config, "user2", model.Notification{
+	_, err = createNotification(conf, "user2", model.Notification{
 		UserId:  "user1",
 		Title:   "test3",
 		Message: "test3",
@@ -170,17 +150,17 @@ func TestNotificationCRUD(t *testing.T) {
 		t.Error("was allowed to specify different user")
 	}
 
-	err = readNotification(config, "user2", test2.Id, test2)
+	err = readNotification(conf, "user2", test2.Id, test2)
 	if err == nil {
 		t.Error("was allowed to read from another user")
 	}
 
-	err = updateNotification(config, "user2", test2)
+	err = updateNotification(conf, "user2", test2)
 	if err == nil {
 		t.Error("was allowed to update from another user")
 	}
 
-	err = deleteNotification(config, "user2", test2.Id)
+	err = deleteNotification(conf, "user2", test2.Id)
 	if err == nil {
 		t.Error("was allowed to delete from another user")
 	}

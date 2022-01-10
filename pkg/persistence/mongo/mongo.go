@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/persistence/vault"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -31,19 +32,25 @@ import (
 )
 
 type Mongo struct {
-	config configuration.Config
-	client *mongo.Client
+	config        configuration.Config
+	client        *mongo.Client
+	brokerManager *vault.BrokerManager
 }
 
 var CreateCollections = []func(db *Mongo) error{}
 
 func New(conf configuration.Config) (*Mongo, error) {
-	ctx, _ := getTimeoutContext()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://"+conf.MongoAddr+":"+conf.MongoPort))
+	//ctx, _ := getTimeoutContext()
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI("mongodb://"+conf.MongoAddr+":"+conf.MongoPort))
 	if err != nil {
 		return nil, err
 	}
-	db := &Mongo{config: conf, client: client}
+	manager, err := vault.New(conf)
+	if err != nil {
+		return nil, err
+	}
+
+	db := &Mongo{config: conf, client: client, brokerManager: manager}
 	initNotifications()
 	initBrokers()
 	initPlatformBrokers()
@@ -53,6 +60,16 @@ func New(conf configuration.Config) (*Mongo, error) {
 			client.Disconnect(context.Background())
 			return nil, err
 		}
+	}
+	if conf.VaultEnsureMigration {
+		err = db.MigrateSecretsToVault()
+		if err != nil {
+			return nil, err
+		}
+	}
+	err = db.HandlerBrokerMongoVaultConsistency(conf.VaultCleanupKeys)
+	if err != nil {
+		return nil, err
 	}
 	return db, nil
 }

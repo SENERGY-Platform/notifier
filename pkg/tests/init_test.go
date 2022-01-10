@@ -21,6 +21,7 @@ import (
 	"github.com/SENERGY-Platform/notifier/pkg"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
+	"github.com/SENERGY-Platform/notifier/pkg/tests/mock"
 	"github.com/golang-jwt/jwt"
 	"strconv"
 	"strings"
@@ -30,38 +31,20 @@ import (
 )
 
 func TestInit(t *testing.T) {
-	wg := &sync.WaitGroup{}
+	wg, ctx, cancel, conf, err := setup()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := configuration.Load("./../../config.json")
-	if err != nil {
-		t.Fatal("ERROR: unable to load config", err)
-	}
-
-	mongoPort, _, err := MongoContainer(ctx, wg)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	config.MongoAddr = "localhost"
-	config.MongoPort = mongoPort
-
-	freePort, err := getFreePort()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	config.ApiPort = strconv.Itoa(freePort)
-
-	err = pkg.Start(ctx, wg, config)
+	err = pkg.Start(ctx, wg, conf)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	t.Run("empty list", listNotifications(config, "user1", model.NotificationList{
+	t.Run("empty list", listNotifications(conf, "user1", model.NotificationList{
 		Total:  0,
 		Limit:  10,
 		Offset: 0,
@@ -95,4 +78,39 @@ type KeycloakClaims struct {
 
 type RealmAccess struct {
 	Roles []string `json:"roles"`
+}
+
+func setup() (wg *sync.WaitGroup, ctx context.Context, cancel context.CancelFunc, conf configuration.Config, err error) {
+	wg = &sync.WaitGroup{}
+	ctx, cancel = context.WithCancel(context.Background())
+
+	conf, err = configuration.Load("./../../config.json")
+	if err != nil {
+		return
+	}
+
+	mongoPort, _, err := MongoContainer(ctx, wg)
+	if err != nil {
+		return
+	}
+	conf.MongoAddr = "localhost"
+	conf.MongoPort = mongoPort
+
+	freePort, err := getFreePort()
+	if err != nil {
+		return
+	}
+	conf.ApiPort = strconv.Itoa(freePort)
+
+	err = mock.MockKeycloak(&conf, ctx)
+	if err != nil {
+		return
+	}
+
+	err = mock.MockVault(&conf, ctx)
+	if err != nil {
+		return
+	}
+
+	return
 }

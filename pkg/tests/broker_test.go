@@ -26,52 +26,32 @@ import (
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"io"
 	"net/http"
-	"strconv"
-	"sync"
 	"testing"
 	"time"
 )
 
 func TestBrokerCRUD(t *testing.T) {
-	wg := &sync.WaitGroup{}
+	wg, ctx, cancel, conf, err := setup()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := configuration.Load("./../../config.json")
-	if err != nil {
-		t.Fatal("ERROR: unable to load config", err)
-	}
-
-	mongoPort, _, err := MongoContainer(ctx, wg)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	config.MongoAddr = "localhost"
-	config.MongoPort = mongoPort
-
-	freePort, err := getFreePort()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	config.ApiPort = strconv.Itoa(freePort)
-
-	err = pkg.Start(ctx, wg, config)
+	err = pkg.Start(ctx, wg, conf)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	t.Run("empty list", listBrokers(config, "user1", model.BrokerList{
+	t.Run("empty list", listBrokers(conf, "user1", model.BrokerList{
 		Total:   0,
 		Limit:   10,
 		Offset:  0,
 		Brokers: []model.Broker{},
 	}))
 
-	test1, err := createBroker(config, "user1", model.Broker{
+	test1, err := createBroker(conf, "user1", model.Broker{
 		Address:  "test1:1883",
 		User:     "test1",
 		Password: "testpw",
@@ -81,12 +61,12 @@ func TestBrokerCRUD(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = readBroker(config, "user1", test1.Id, test1)
+	err = readBroker(conf, "user1", test1.Id, test1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	test2, err := createBroker(config, "user1", model.Broker{
+	test2, err := createBroker(conf, "user1", model.Broker{
 		Address:  "test2:1883",
 		User:     "test1",
 		Password: "testpw",
@@ -95,23 +75,23 @@ func TestBrokerCRUD(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = readBroker(config, "user1", test2.Id, test2)
+	err = readBroker(conf, "user1", test2.Id, test2)
 	if err != nil {
 		t.Error(err)
 	}
 
-	test3, err := createBroker(config, "user2", model.Broker{
+	test3, err := createBroker(conf, "user2", model.Broker{
 		Address: "test3",
 	})
 	if err != nil {
 		t.Error(err)
 	}
-	err = readBroker(config, "user2", test3.Id, test3)
+	err = readBroker(conf, "user2", test3.Id, test3)
 	if err != nil {
 		t.Error(err)
 	}
 
-	t.Run("list user1", listBrokers(config, "user1", model.BrokerList{
+	t.Run("list user1", listBrokers(conf, "user1", model.BrokerList{
 		Total:   2,
 		Limit:   10,
 		Offset:  0,
@@ -119,7 +99,7 @@ func TestBrokerCRUD(t *testing.T) {
 	}))
 
 	test1.Password = "newpassword"
-	test1, err = updateBroker(config, "user1", test1)
+	test1, err = updateBroker(conf, "user1", test1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -127,19 +107,19 @@ func TestBrokerCRUD(t *testing.T) {
 		t.Error("update not executed")
 	}
 
-	t.Run("list user1 after update", listBrokers(config, "user1", model.BrokerList{
+	t.Run("list user1 after update", listBrokers(conf, "user1", model.BrokerList{
 		Total:   2,
 		Limit:   10,
 		Offset:  0,
 		Brokers: []model.Broker{test1, test2},
 	}))
 
-	err = deleteBroker(config, "user1", test2.Id)
+	err = deleteBroker(conf, "user1", test2.Id)
 	if err != nil {
 		t.Error(err)
 	}
 
-	t.Run("list user1 after delete", listBrokers(config, "user1", model.BrokerList{
+	t.Run("list user1 after delete", listBrokers(conf, "user1", model.BrokerList{
 		Total:   1,
 		Limit:   10,
 		Offset:  0,
@@ -148,24 +128,24 @@ func TestBrokerCRUD(t *testing.T) {
 
 	// Try disallowed actions
 
-	_, err = createBroker(config, "user2", model.Broker{
+	_, err = createBroker(conf, "user2", model.Broker{
 		Id: "1234",
 	})
 	if err == nil {
 		t.Error("was allowed to specified ID")
 	}
 
-	err = readBroker(config, "user2", test2.Id, test2)
+	err = readBroker(conf, "user2", test2.Id, test2)
 	if err == nil {
 		t.Error("was allowed to read from another user")
 	}
 
-	test2, err = updateBroker(config, "user2", test2)
+	test2, err = updateBroker(conf, "user2", test2)
 	if err == nil {
 		t.Error("was allowed to update from another user")
 	}
 
-	err = deleteBroker(config, "user2", test2.Id)
+	err = deleteBroker(conf, "user2", test2.Id)
 	if err == nil {
 		t.Error("was allowed to delete from another user")
 	}
