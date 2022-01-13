@@ -18,6 +18,7 @@ package mongo
 
 import (
 	"errors"
+	"fmt"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence/vault"
@@ -178,7 +179,8 @@ func (this *Mongo) RemoveBrokers(userId string, ids []string) (error, int) {
 	}
 	err = this.brokerManager.Delete(ids)
 	if err != nil {
-		return err, http.StatusInternalServerError
+		fmt.Println("ERROR: Could not delete at vault: " + err.Error())
+		err = nil
 	}
 	return nil, http.StatusOK
 }
