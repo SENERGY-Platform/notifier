@@ -22,6 +22,9 @@
     "vault_url": "http://localhost:8200",
     "vault_role": "vault",
     "vault_engine_broker": "notifier-broker",
+    "vault_engine_fcm": "notifier-fcm",
     "vault_cleanup_keys": false,
-    "vault_ensure_migration": false
+    "vault_ensure_migration": false,
+    "fcm_project_id": "",
+    "fcm_iam_id": "backend"
 }

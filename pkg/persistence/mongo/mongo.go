@@ -20,21 +20,24 @@ import (
 	"context"
 	"errors"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence/vault"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx"
 	"log"
+	"net/http"
 	"reflect"
 	"strings"
 	"time"
 )
 
 type Mongo struct {
-	config        configuration.Config
-	client        *mongo.Client
-	brokerManager *vault.BrokerManager
+	config          configuration.Config
+	client          *mongo.Client
+	brokerManager   *vault.BrokerManager
+	fcmTokenManager *vault.FcmTokenManager
 }
 
 var CreateCollections = []func(db *Mongo) error{}
@@ -50,7 +53,12 @@ func New(conf configuration.Config) (*Mongo, error) {
 		return nil, err
 	}
 
-	db := &Mongo{config: conf, client: client, brokerManager: manager}
+	fcmTokenManager, err := vault.NewFcmTokenManager(conf)
+	if err != nil {
+		return nil, err
+	}
+
+	db := &Mongo{config: conf, client: client, brokerManager: manager, fcmTokenManager: fcmTokenManager}
 	initNotifications()
 	initBrokers()
 	initPlatformBrokers()
@@ -123,6 +131,30 @@ func (this *Mongo) ensureTextIndex(collection *mongo.Collection, indexname strin
 func (this *Mongo) Disconnect() {
 	timeout, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	log.Println(this.client.Disconnect(timeout))
+}
+
+func (this *Mongo) UpsertFcmToken(token model.FcmToken) (err error, errCode int) {
+	err = this.fcmTokenManager.Save(&token)
+	if err != nil {
+		return err, http.StatusInternalServerError
+	}
+	return nil, http.StatusOK
+}
+
+func (this *Mongo) DeleteFcmToken(token model.FcmToken) (err error, errCode int) {
+	return this.fcmTokenManager.Delete(&token)
+}
+
+func (this *Mongo) GetFcmTokens(userId string) (tokens []model.FcmToken, err error) {
+	tokensWithId, err := this.fcmTokenManager.GetFcmTokens(userId)
+	if err != nil {
+		return nil, err
+	}
+	tokens = []model.FcmToken{}
+	for _, token := range tokensWithId {
+		tokens = append(tokens, token.FcmToken)
+	}
+	return
 }
 
 func getBsonFieldName(obj interface{}, fieldName string) (bsonName string, err error) {

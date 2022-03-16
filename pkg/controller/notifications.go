@@ -49,6 +49,7 @@ func (this *Controller) SetNotification(token auth.Token, notification model.Not
 	if err == nil {
 		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
 		go this.handleMqttNotificationUpdate(token.GetUserId(), notification)
+		go this.handleFCMNotificationUpdate(token.GetUserId(), notification)
 	}
 	return notification, err, errCode
 }
@@ -65,6 +66,7 @@ func (this *Controller) CreateNotification(token auth.Token, notification model.
 	if err == nil {
 		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
 		go this.handleMqttNotificationUpdate(token.GetUserId(), notification)
+		go this.handleFCMNotificationUpdate(token.GetUserId(), notification)
 	}
 	return notification, err, errCode
 }
@@ -73,6 +75,7 @@ func (this *Controller) DeleteMultipleNotifications(token auth.Token, ids []stri
 	err, errCode = this.db.RemoveNotifications(token.GetUserId(), ids)
 	if err == nil {
 		go this.handleWsNotificationDelete(token.GetUserId(), ids)
+		go this.handleFCMNotificationDelete(token.GetUserId(), ids)
 	}
 	return
 }

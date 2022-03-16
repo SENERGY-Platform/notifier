@@ -82,4 +82,7 @@ type Controller interface {
 	GetPlatformBroker(token auth.Token) (platformBroker model.PlatformBroker, err error, errCode int)
 	SetPlatformBroker(token auth.Token, platformBroker model.PlatformBroker) (result model.PlatformBroker, err error, errCode int)
 	DeletePlatformBroker(token auth.Token) (err error, errCode int)
+
+	PutFcmToken(token auth.Token, fcmToken string) (err error, errCode int)
+	DeleteFcmToken(token auth.Token, fcmToken string) (err error, errCode int)
 }

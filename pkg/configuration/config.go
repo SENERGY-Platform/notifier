@@ -52,8 +52,12 @@ type Config struct {
 	VaultUrl             string `json:"vault_url"`
 	VaultRole            string `json:"vault_role"`
 	VaultEngineBroker    string `json:"vault_engine_broker"`
+	VaultEngineFcm       string `json:"vault_engine_fcm"`
 	VaultCleanupKeys     bool   `json:"vault_cleanup_keys"`
 	VaultEnsureMigration bool   `json:"vault_ensure_migration"`
+
+	FcmProjectId string `json:"fcm_project_id"`
+	FcmIamId     string `json:"fcm_iam_id"`
 }
 
 //loads config from json in location and used environment variables (e.g ZookeeperUrl --> ZOOKEEPER_URL)

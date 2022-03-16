@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/messaging"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
@@ -33,6 +35,7 @@ type Controller struct {
 	sessionsMux           sync.Mutex
 	sessions              map[string][]*WsSession
 	platformMqttPublisher *mqtt.Publisher
+	firebaseClient        *messaging.Client
 }
 
 func New(config configuration.Config, db Persistence) *Controller {
@@ -45,12 +48,30 @@ func New(config configuration.Config, db Persistence) *Controller {
 			log.Fatal(err.Error())
 		}
 	}
+
+	var firebaseClient *messaging.Client
+
+	if config.FcmProjectId != "" && config.FcmIamId != "" {
+		firebaseApp, err := firebase.NewApp(context.Background(), &firebase.Config{
+			ProjectID:        config.FcmProjectId,
+			ServiceAccountID: config.FcmIamId,
+		})
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		firebaseClient, err = firebaseApp.Messaging(context.Background())
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}
+
 	return &Controller{
 		config:                config,
 		db:                    db,
 		sessionsMux:           sync.Mutex{},
 		sessions:              make(map[string][]*WsSession),
 		platformMqttPublisher: publisher,
+		firebaseClient:        firebaseClient,
 	}
 }
 
@@ -69,4 +90,8 @@ type Persistence interface {
 	ReadPlatformBroker(userId string) (platformBroker model.PlatformBroker, err error, errCode int)
 	SetPlatformBroker(platformBroker model.PlatformBroker) (err error, errCode int)
 	RemovePlatformBroker(userId string) (err error, errCode int)
+
+	UpsertFcmToken(token model.FcmToken) (err error, errCode int)
+	DeleteFcmToken(token model.FcmToken) (err error, errCode int)
+	GetFcmTokens(userId string) (tokens []model.FcmToken, err error)
 }
