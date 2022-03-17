@@ -28,7 +28,7 @@ func FcmTokenEndpoints(_ configuration.Config, control Controller, router *mux.R
 			return
 		}
 
-	}).Methods(http.MethodPut, http.MethodOptions)
+	}).Methods(http.MethodPut, http.MethodPost, http.MethodOptions)
 
 	router.HandleFunc(resource+"/{fcmToken}", func(writer http.ResponseWriter, request *http.Request) {
 		token, err := auth.GetParsedToken(request)
