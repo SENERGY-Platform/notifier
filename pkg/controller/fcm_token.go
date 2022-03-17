@@ -39,20 +39,25 @@ func (this *Controller) handleFCMNotificationUpdate(userId string, notification 
 
 	encoded, _ := json.Marshal(notification)
 
-	responses, err := this.firebaseClient.SendMulticast(context.Background(), &messaging.MulticastMessage{
+	message := &messaging.MulticastMessage{
 		Tokens: tokens,
 		Data: map[string]string{
 			"type":    model.WsUpdateSetType,
 			"payload": string(encoded),
 		},
-		Notification: &messaging.Notification{
+	}
+
+	if !notification.IsRead {
+		message.Notification = &messaging.Notification{
 			Title: notification.Title,
 			Body:  notification.Message,
-		},
-		Android: &messaging.AndroidConfig{
+		}
+		message.Android = &messaging.AndroidConfig{
 			Priority: "high",
-		},
-	})
+		}
+	}
+
+	responses, err := this.firebaseClient.SendMulticast(context.Background(), message)
 	if err != nil {
 		log.Println("ERROR:", err.Error())
 		return
