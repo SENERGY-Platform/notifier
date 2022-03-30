@@ -36,6 +36,9 @@ func (this *Controller) handleFCMNotificationUpdate(userId string, notification 
 		log.Println("ERROR:", err.Error())
 		return
 	}
+	if tokens == nil || len(tokens) == 0 {
+		return
+	}
 
 	encoded, _ := json.Marshal(notification)
 
