@@ -85,6 +85,9 @@ func (this *Controller) handleFCMNotificationDelete(userId string, ids []string)
 		log.Println("ERROR:", err.Error())
 		return
 	}
+	if tokens == nil || len(tokens) == 0 {
+		return
+	}
 
 	encoded, _ := json.Marshal(ids)
 
