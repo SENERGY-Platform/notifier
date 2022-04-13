@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/satori/go.uuid v1.2.0
-	github.com/senergy-platform/vault-jwt-go v0.0.0-20220107131545-0e56e86d3c5e
+	github.com/senergy-platform/vault-jwt-go v0.0.0-20220413093555-9d1c21132007
 	go.mongodb.org/mongo-driver v1.7.0
 )
 

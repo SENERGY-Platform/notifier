@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"firebase.google.com/go/v4/errorutils"
 	"firebase.google.com/go/v4/messaging"
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
@@ -65,13 +66,7 @@ func (this *Controller) handleFCMNotificationUpdate(userId string, notification 
 		log.Println("ERROR:", err.Error())
 		return
 	}
-	if responses.FailureCount > 0 {
-		for _, response := range responses.Responses {
-			if response.Error != nil {
-				log.Println("ERROR: sending fcm notification ", response.MessageID, response.Error.Error())
-			}
-		}
-	}
+	this.handleFcmResponses(responses, tokens, userId)
 }
 
 func (this *Controller) handleFCMNotificationDelete(userId string, ids []string) {
@@ -102,10 +97,24 @@ func (this *Controller) handleFCMNotificationDelete(userId string, ids []string)
 		log.Println("ERROR:", err.Error())
 		return
 	}
+	this.handleFcmResponses(responses, tokens, userId)
+}
+
+func (this *Controller) handleFcmResponses(responses *messaging.BatchResponse, tokens []string, userId string) {
 	if responses.FailureCount > 0 {
-		for _, response := range responses.Responses {
-			if response.Error != nil {
-				log.Println("ERROR: sending fcm notification ", response.MessageID, response.Error.Error())
+		for i := range responses.Responses {
+			if responses.Responses[i].Error != nil {
+				if errorutils.IsNotFound(responses.Responses[i].Error) {
+					err, _ := this.db.DeleteFcmToken(model.FcmToken{
+						Token:  tokens[i],
+						UserId: userId,
+					})
+					if err != nil {
+						log.Println("ERROR: could not delete outdated token for user " + userId + ": " + err.Error())
+					}
+				} else {
+					log.Println("ERROR: sending fcm notification ", responses.Responses[i].MessageID, responses.Responses[i].Error.Error())
+				}
 			}
 		}
 	}
