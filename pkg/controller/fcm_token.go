@@ -57,7 +57,17 @@ func (this *Controller) handleFCMNotificationUpdate(userId string, notification 
 			Body:  notification.Message,
 		}
 		message.Android = &messaging.AndroidConfig{
+			Notification: &messaging.AndroidNotification{
+				Title: notification.Title,
+				Body:  notification.Message,
+				Tag:   notification.Id,
+			},
 			Priority: "high",
+		}
+		message.APNS = &messaging.APNSConfig{
+			Headers: map[string]string{
+				"apns-collapse-id": notification.Id,
+			},
 		}
 	}
 
