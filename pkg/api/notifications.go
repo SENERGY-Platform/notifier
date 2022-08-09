@@ -122,7 +122,17 @@ func NotificationsEndpoints(_ configuration.Config, control Controller, router *
 			http.Error(writer, "You may only send messages to yourself", http.StatusUnauthorized)
 			return
 		}
-		result, err, errCode := control.CreateNotification(token, notification)
+		var ignoreDuplicatesWithinSeconds *int64
+		ignoreDuplicatesWithinSecondsParam := request.URL.Query().Get("ignore_duplicates_within_seconds")
+		if len(ignoreDuplicatesWithinSecondsParam) > 0 {
+			x, err := strconv.ParseInt(ignoreDuplicatesWithinSecondsParam, 10, 64)
+			if err != nil {
+				http.Error(writer, "Could not parse query parameter ignore_duplicates_within_seconds", http.StatusUnauthorized)
+				return
+			}
+			ignoreDuplicatesWithinSeconds = &x
+		}
+		result, err, errCode := control.CreateNotification(token, notification, ignoreDuplicatesWithinSeconds)
 		if err != nil {
 			http.Error(writer, err.Error(), errCode)
 			return

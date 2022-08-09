@@ -26,6 +26,7 @@ import (
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"io"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -56,7 +57,7 @@ func TestNotificationCRUD(t *testing.T) {
 		Title:   "test1",
 		Message: "test1",
 		IsRead:  false,
-	})
+	}, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -86,7 +87,7 @@ func TestNotificationCRUD(t *testing.T) {
 		Title:   "test3",
 		Message: "test3",
 		IsRead:  false,
-	})
+	}, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -135,7 +136,7 @@ func TestNotificationCRUD(t *testing.T) {
 		Title:   "test3",
 		Message: "test3",
 		IsRead:  false,
-	})
+	}, nil)
 	if err == nil {
 		t.Error("was allowed to specified ID")
 	}
@@ -145,7 +146,7 @@ func TestNotificationCRUD(t *testing.T) {
 		Title:   "test3",
 		Message: "test3",
 		IsRead:  false,
-	})
+	}, nil)
 	if err == nil {
 		t.Error("was allowed to specify different user")
 	}
@@ -164,6 +165,45 @@ func TestNotificationCRUD(t *testing.T) {
 	if err == nil {
 		t.Error("was allowed to delete from another user")
 	}
+
+	t.Run("test deduplication", func(t *testing.T) {
+		var sixty int64 = 60
+
+		testNoDupe, err := createNotification(conf, "--", model.Notification{
+			UserId:  "--",
+			Title:   "dupe",
+			Message: "dupe",
+			IsRead:  false,
+		}, &sixty)
+		if err != nil {
+			t.Error(err)
+		}
+		testDupe, err := createNotification(conf, "--", model.Notification{
+			UserId:  "--",
+			Title:   "dupe",
+			Message: "dupe",
+			IsRead:  false,
+		}, &sixty)
+		if err != nil {
+			t.Error(err)
+		}
+		if !testNoDupe.Equal(testDupe) {
+			t.Error("duplicate created even though ignoreDuplicatesWithinSeconds specified")
+		}
+
+		testNoDupe2, err := createNotification(conf, "--2", model.Notification{
+			UserId:  "--2",
+			Title:   "dupe",
+			Message: "dupe",
+			IsRead:  false,
+		}, &sixty)
+		if err != nil {
+			t.Error(err)
+		}
+		if testNoDupe.Equal(testNoDupe2) {
+			t.Error("did not create unique notification when ignoreDuplicatesWithinSeconds specified")
+		}
+	})
 }
 
 func listNotifications(config configuration.Config, userId string, expected model.NotificationList) func(t *testing.T) {
@@ -205,7 +245,7 @@ func listNotifications(config configuration.Config, userId string, expected mode
 	}
 }
 
-func createNotification(config configuration.Config, userId string, notification model.Notification) (result model.Notification, err error) {
+func createNotification(config configuration.Config, userId string, notification model.Notification, ignoreDuplicatesWithinSeconds *int64) (result model.Notification, err error) {
 	var token string
 	token, err = createToken(userId)
 	if err != nil {
@@ -216,7 +256,11 @@ func createNotification(config configuration.Config, userId string, notification
 	if err != nil {
 		return
 	}
-	req, err := http.NewRequest("POST", "http://localhost:"+config.ApiPort+"/notifications", b)
+	url := "http://localhost:" + config.ApiPort + "/notifications"
+	if ignoreDuplicatesWithinSeconds != nil {
+		url += "?ignore_duplicates_within_seconds=" + strconv.FormatInt(*ignoreDuplicatesWithinSeconds, 10)
+	}
+	req, err := http.NewRequest("POST", url, b)
 	if err != nil {
 		return
 	}

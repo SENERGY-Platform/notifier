@@ -109,7 +109,7 @@ func TestMQTT(t *testing.T) {
 
 	test1, err := createNotification(conf, "user1", model.Notification{
 		Title: "test1",
-	})
+	}, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -137,7 +137,7 @@ func TestMQTT(t *testing.T) {
 
 	test2, err := createNotification(conf, "user2", model.Notification{
 		Title: "test1",
-	})
+	}, nil)
 	if err != nil {
 		t.Error(err)
 	}

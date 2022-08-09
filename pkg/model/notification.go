@@ -17,6 +17,7 @@
 package model
 
 import (
+	"crypto/sha256"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
@@ -28,6 +29,7 @@ type Notification struct {
 	Message   string    `json:"message" bson:"message"`
 	IsRead    bool      `json:"isRead" bson:"isRead"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+	hash      [32]byte
 }
 
 func (n *Notification) ToDB() (db NotificationDB, err error) {
@@ -35,7 +37,7 @@ func (n *Notification) ToDB() (db NotificationDB, err error) {
 	if err != nil {
 		return db, err
 	}
-	db.UserId, db.Title, db.Message, db.IsRead, db.CreatedAt = n.UserId, n.Title, n.Message, n.IsRead, n.CreatedAt
+	db.UserId, db.Title, db.Message, db.IsRead, db.CreatedAt, db.Hash = n.UserId, n.Title, n.Message, n.IsRead, n.CreatedAt, n.Hash()
 	return
 }
 
@@ -52,6 +54,16 @@ func (n *Notification) Equal(other interface{}) bool {
 		n.UserId == otherN.UserId
 }
 
+func (n *Notification) Hash() [32]byte {
+	for _, v := range n.hash {
+		if v != 0 {
+			return n.hash
+		}
+	}
+	n.hash = sha256.Sum256([]byte(n.Title + "___" + n.Message))
+	return n.hash
+}
+
 type NotificationDB struct {
 	Id        primitive.ObjectID `bson:"_id"`
 	UserId    string             `bson:"userId"`
@@ -59,6 +71,7 @@ type NotificationDB struct {
 	Message   string             `bson:"message"`
 	IsRead    bool               `bson:"isRead"`
 	CreatedAt time.Time          `bson:"created_at"`
+	Hash      [32]byte           `bson:"hash"`
 }
 
 type NotificationList struct {

@@ -54,10 +54,21 @@ func (this *Controller) SetNotification(token auth.Token, notification model.Not
 	return notification, err, errCode
 }
 
-func (this *Controller) CreateNotification(token auth.Token, notification model.Notification) (result model.Notification, err error, errCode int) {
+func (this *Controller) CreateNotification(token auth.Token, notification model.Notification, ignoreDuplicatesWithinSeconds *int64) (result model.Notification, err error, errCode int) {
 	if notification.Id != "" {
 		return result, errors.New("specifing id is not allowed"), http.StatusBadRequest
 	}
+	if ignoreDuplicatesWithinSeconds != nil {
+		notOlderThan := time.Unix(time.Now().Unix()-*ignoreDuplicatesWithinSeconds, 0)
+		existing, err, code := this.db.ReadNotificationByHash(token.GetUserId(), notification.Hash(), notOlderThan)
+		if err == nil {
+			return existing, err, code
+		}
+		if code != http.StatusNotFound {
+			return existing, err, code
+		}
+	}
+
 	notification.Id = primitive.NewObjectID().Hex()
 	if notification.CreatedAt.Before(time.UnixMilli(0)) {
 		notification.CreatedAt = time.Now().Truncate(time.Millisecond)

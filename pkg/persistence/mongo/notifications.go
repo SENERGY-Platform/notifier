@@ -26,6 +26,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"net/http"
+	"time"
 )
 
 const notificationTitleFieldName = "Title"
@@ -35,6 +36,7 @@ var notificationTitleKey string
 var notificationUserIdKey = "userId"
 var notificationCreatedAtKey string
 var notificationIdKey = "_id"
+var notificationHashKey = "hash"
 
 func initNotifications() {
 	var err error
@@ -128,6 +130,34 @@ func (this *Mongo) ReadNotification(userId string, id string) (result model.Noti
 	return result, nil, http.StatusOK
 }
 
+func (this *Mongo) ReadNotificationByHash(userId string, hash [32]byte, notOlderThan time.Time) (result model.Notification, err error, errCode int) {
+	ctx, _ := getTimeoutContext()
+	temp := this.notificationCollection().FindOne(
+		ctx,
+		bson.M{
+			"$and": []bson.M{
+				{notificationHashKey: hash},
+				{notificationUserIdKey: userId},
+				{notificationCreatedAtKey: bson.M{"$gte": notOlderThan}},
+			},
+		}, &options.FindOneOptions{Sort: bson.D{{"created_at", -1}}})
+	err = temp.Err()
+	if err == mongo.ErrNoDocuments {
+		return result, err, http.StatusNotFound
+	}
+	if err != nil {
+		return result, err, http.StatusInternalServerError
+	}
+	err = temp.Decode(&result)
+	if err == mongo.ErrNoDocuments {
+		return result, err, http.StatusNotFound
+	}
+	if err != nil {
+		return result, err, http.StatusInternalServerError
+	}
+	return result, nil, http.StatusOK
+}
+
 func (this *Mongo) SetNotification(notification model.Notification) (error, int) {
 	notificationDb, err := notification.ToDB()
 	if err != nil {
@@ -183,4 +213,28 @@ func (this *Mongo) RemoveNotifications(userId string, ids []string) (error, int)
 		return err, http.StatusInternalServerError
 	}
 	return nil, http.StatusOK
+}
+
+func (this *Mongo) migrateHash() error {
+	collection := this.notificationCollection()
+	ctx, _ := getTimeoutContext()
+	cursor, err := collection.Find(ctx, bson.M{
+		notificationHashKey: nil,
+	})
+	if err != nil {
+		return err
+	}
+	for cursor.Next(ctx) {
+		element := model.Notification{}
+		err = cursor.Decode(&element)
+		if err != nil {
+			return err
+		}
+		element.Hash()
+		err, _ = this.SetNotification(element)
+		if err != nil {
+			return err
+		}
+	}
+	return err
 }

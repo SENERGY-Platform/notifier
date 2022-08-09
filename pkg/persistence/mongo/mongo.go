@@ -79,6 +79,10 @@ func New(conf configuration.Config) (*Mongo, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = db.migrateHash()
+	if err != nil {
+		return nil, err
+	}
 	return db, nil
 }
 

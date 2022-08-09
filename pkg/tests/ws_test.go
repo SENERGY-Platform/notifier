@@ -98,7 +98,7 @@ func TestWebSocket(t *testing.T) {
 		Title:   "test1",
 		Message: "test1",
 		IsRead:  false,
-	})
+	}, nil)
 
 	userId := "dd69ea0d-f553-4336-80f3-7f4567f85c7b"
 	test2, err := createNotification(conf, userId, model.Notification{
@@ -106,7 +106,7 @@ func TestWebSocket(t *testing.T) {
 		Title:   "test2",
 		Message: "test2",
 		IsRead:  false,
-	})
+	}, nil)
 
 	time.Sleep(1 * time.Second)
 
@@ -130,7 +130,7 @@ func TestWebSocket(t *testing.T) {
 		Title:   "test",
 		Message: "test",
 		IsRead:  false,
-	})
+	}, nil)
 	if err != nil {
 		t.Error(err)
 	}
