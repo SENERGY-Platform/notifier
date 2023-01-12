@@ -54,7 +54,7 @@ func (this *Controller) HandleWs(conn *websocket.Conn) {
 		}
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
-	err := this.startPing(ctx, conn)
+	err := this.startPing(ctx, &session)
 	if err != nil {
 		log.Println("ERROR:", err)
 		debug.PrintStack()
@@ -241,7 +241,7 @@ func (this *Controller) addSession(session *WsSession, userId *string) {
 	this.sessions[*userId] = append(l, session)
 }
 
-func (this *Controller) startPing(ctx context.Context, conn *websocket.Conn) (err error) {
+func (this *Controller) startPing(ctx context.Context, session *WsSession) (err error) {
 	pingPeriod, err := time.ParseDuration(this.config.WsPingPeriod)
 	if err != nil {
 		return err
@@ -253,7 +253,9 @@ func (this *Controller) startPing(ctx context.Context, conn *websocket.Conn) (er
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				err := conn.WriteMessage(websocket.PingMessage, nil)
+				session.mutex.Lock()
+				err := session.conn.WriteMessage(websocket.PingMessage, nil)
+				session.mutex.Unlock()
 				if err != nil {
 					log.Println("ERROR: sending ws ping:", err)
 					return
