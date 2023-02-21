@@ -37,7 +37,7 @@ var endpoints = []func(config configuration.Config, control Controller, router *
 
 func Start(ctx context.Context, wg *sync.WaitGroup, config configuration.Config, control Controller) {
 	log.Println("start api")
-	router := mux.NewRouter()
+	router := mux.NewRouter().StrictSlash(true)
 	for _, e := range endpoints {
 		log.Println("add endpoints: " + runtime.FuncForPC(reflect.ValueOf(e).Pointer()).Name())
 		e(config, control, router)
