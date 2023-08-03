@@ -60,6 +60,10 @@ func initNotifications() {
 		if err != nil {
 			return err
 		}
+		err = db.ensureIndex(collection, "notificationuseridindex", notificationUserIdKey, true, false)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }
