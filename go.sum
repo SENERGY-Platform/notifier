@@ -409,6 +409,8 @@ github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdh
 github.com/seccomp/libseccomp-golang v0.9.1/go.mod h1:GbW5+tmTXfcxTToHLXlScSlAvWlF4P2Ca7zGrPiEpWo=
 github.com/senergy-platform/vault-jwt-go v0.0.0-20220413093555-9d1c21132007 h1:HvfymMQ5lEFt11HEM3OZVaUUo9Izdq+lPbVXfQxblMs=
 github.com/senergy-platform/vault-jwt-go v0.0.0-20220413093555-9d1c21132007/go.mod h1:sLlRUw4z1XtkN0DNfk6Of3GJTnsSv2N9byXvGXZvTVo=
+github.com/senergy-platform/vault-jwt-go v0.0.0-20230807093132-0e8f1a8051a6 h1:ghM8ayTcTSh4vPhpDirdLlftASbJRrwIiPkYgqZCRAE=
+github.com/senergy-platform/vault-jwt-go v0.0.0-20230807093132-0e8f1a8051a6/go.mod h1:sLlRUw4z1XtkN0DNfk6Of3GJTnsSv2N9byXvGXZvTVo=
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
