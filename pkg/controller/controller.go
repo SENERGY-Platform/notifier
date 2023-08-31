@@ -24,7 +24,7 @@ import (
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"log"
 	"sync"
 	"time"
@@ -44,7 +44,7 @@ func New(config configuration.Config, db Persistence) *Controller {
 	if config.PlatformMqttAddress != "" && config.PlatformMqttAddress != "-" {
 		var err error
 		publisher, err = mqtt.NewPublisher(context.Background(), config.PlatformMqttAddress, config.PlatformMqttUser,
-			config.PlatformMqttPw, config.MqttClientPrefix+uuid.NewV4().String(), config.PlatformMqttQos, config.Debug)
+			config.PlatformMqttPw, config.MqttClientPrefix+uuid.NewString(), config.PlatformMqttQos, config.Debug)
 		if err != nil {
 			log.Fatal(err.Error())
 		}

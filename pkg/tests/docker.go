@@ -18,82 +18,82 @@ package tests
 
 import (
 	"context"
-	"errors"
-	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"log"
 	"net"
-	"os"
 	"sync"
 	"time"
 )
 
-func MongoContainer(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAddress string, err error) {
-	pool, err := dockertest.NewPool("")
-	container, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "mongo",
-		Tag:        "4.1.11",
-	}, func(config *docker.HostConfig) {
-		config.Tmpfs = map[string]string{"/data/db": "rw"}
+func MongoContainer(ctx context.Context, wg *sync.WaitGroup) (hostport string, containerip string, err error) {
+	log.Println("start mongo")
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        "mongo:4.1.11",
+			ExposedPorts: []string{"27017/tcp"},
+			WaitingFor: wait.ForAll(
+				wait.ForLog("waiting for connections"),
+				wait.ForListeningPort("27017/tcp"),
+			),
+			Tmpfs: map[string]string{"/data/db": "rw"},
+		},
+		Started: true,
 	})
 	if err != nil {
 		return "", "", err
 	}
+
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		<-ctx.Done()
-		log.Println("DEBUG: remove container " + container.Container.Name)
-		container.Close()
-		wg.Done()
+		log.Println("DEBUG: remove container mongo", c.Terminate(context.Background()))
 	}()
-	hostPort = container.GetPort("27017/tcp")
-	err = pool.Retry(func() error {
-		log.Println("try mongodb connection...")
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-		client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:"+hostPort))
-		err = client.Ping(ctx, readpref.Primary())
-		return err
-	})
-	return hostPort, container.Container.NetworkSettings.IPAddress, err
+
+	containerip, err = c.ContainerIP(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	temp, err := c.MappedPort(ctx, "27017/tcp")
+	if err != nil {
+		return "", "", err
+	}
+	hostport = temp.Port()
+
+	return hostport, containerip, err
 }
 
 func MqttContainer(ctx context.Context, wg *sync.WaitGroup) (brokerAddress string, err error) {
-	pool, err := dockertest.NewPool("")
-	container, err := pool.Run("erlio/docker-vernemq", "latest", []string{
-		"DOCKER_VERNEMQ_ACCEPT_EULA=yes",
-		"DOCKER_VERNEMQ_ALLOW_ANONYMOUS=on",
-		"DOCKER_VERNEMQ_LOG__CONSOLE__LEVEL=error",
-		//"DOCKER_VERNEMQ_SHARED_SUBSCRIPTION_POLICY=random",
-		//"DOCKER_VERNEMQ_PLUGINS__VMQ_PASSWD=off",
-		//"DOCKER_VERNEMQ_PLUGINS__VMQ_ACL=off",
-		//"DOCKER_VERNEMQ_PLUGINS__VMQ_WEBHOOKS=on",
+	log.Println("start mqtt broker")
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:           "eclipse-mosquitto:1.6.12",
+			ExposedPorts:    []string{"1883/tcp"},
+			WaitingFor:      wait.ForListeningPort("1883/tcp"),
+			AlwaysPullImage: true,
+		},
+		Started: true,
 	})
+	if err != nil {
+		return "", err
+	}
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		<-ctx.Done()
-		log.Println("DEBUG: remove container " + container.Container.Name)
-		container.Close()
-		wg.Done()
+		timeout, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		log.Println("DEBUG: remove container mqtt", c.Terminate(timeout))
 	}()
-	go Dockerlog(pool, ctx, container, "VERNEMQ")
-	brokerAddress = "localhost:" + container.GetPort("1883/tcp")
-	err = pool.Retry(func() error {
-		log.Println("try mqtt connection...")
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		pub, err := mqtt.NewPublisher(ctx, brokerAddress, "", "", "connection-check", 0, true)
-		if err != nil {
-			return err
-		}
-		if !pub.GetClient().IsConnected() {
-			return errors.New("not connected")
-		}
-		return nil
-	})
+
+	port, err := c.MappedPort(ctx, "1883/tcp")
+	if err != nil {
+		return "", err
+	}
+	hostPort := port.Port()
+
+	brokerAddress = "tcp://localhost:" + hostPort
+
 	return brokerAddress, err
 }
 
@@ -109,29 +109,4 @@ func getFreePort() (int, error) {
 	}
 	defer listener.Close()
 	return listener.Addr().(*net.TCPAddr).Port, nil
-}
-
-func Dockerlog(pool *dockertest.Pool, ctx context.Context, repo *dockertest.Resource, name string) {
-	out := &LogWriter{logger: log.New(os.Stdout, "["+name+"]", 0)}
-	err := pool.Client.Logs(docker.LogsOptions{
-		Stdout:       true,
-		Stderr:       true,
-		Context:      ctx,
-		Container:    repo.Container.ID,
-		Follow:       true,
-		OutputStream: out,
-		ErrorStream:  out,
-	})
-	if err != nil && err != context.Canceled {
-		log.Println("DEBUG-ERROR: unable to start docker log", name, err)
-	}
-}
-
-type LogWriter struct {
-	logger *log.Logger
-}
-
-func (this *LogWriter) Write(p []byte) (n int, err error) {
-	this.logger.Print(string(p))
-	return len(p), nil
 }

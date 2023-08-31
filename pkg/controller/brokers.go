@@ -21,7 +21,7 @@ import (
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"net/http"
 	"time"
 )
@@ -47,7 +47,7 @@ func (this *Controller) CreateBroker(token auth.Token, broker model.Broker) (res
 	if broker.Address == "" {
 		return result, errors.New("empty address not allowed"), http.StatusBadRequest
 	}
-	broker.Id = uuid.NewV4().String()
+	broker.Id = uuid.NewString()
 	broker.UserId = token.GetUserId()
 	broker.CreatedAt = time.Now().Truncate(time.Millisecond)
 	broker.UpdatedAt = broker.CreatedAt

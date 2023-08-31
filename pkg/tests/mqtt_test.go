@@ -22,7 +22,7 @@ import (
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
 	paho "github.com/eclipse/paho.mqtt.golang"
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"testing"
 	"time"
 )
@@ -85,7 +85,7 @@ func TestMQTT(t *testing.T) {
 
 	msgsU1, msgsU2, msgs1, msgs2, msgs3 := []string{}, []string{}, []string{}, []string{}, []string{}
 	publisher, err := mqtt.NewPublisher(ctx, conf.PlatformMqttAddress, conf.PlatformMqttUser,
-		conf.PlatformMqttPw, "notifier-test-"+uuid.NewV4().String(), conf.PlatformMqttQos, conf.Debug)
+		conf.PlatformMqttPw, "notifier-test-"+uuid.NewString(), conf.PlatformMqttQos, conf.Debug)
 	if err != nil {
 		t.Error(err)
 	}
@@ -125,7 +125,7 @@ func TestMQTT(t *testing.T) {
 	if len(msgsU2) != 0 {
 		t.Error("user2 received mqtt notification of user1")
 	}
-	if len(msgs1) != 1 || msgsU1[0] != string(test1S) {
+	if len(msgs1) != 1 || msgs1[0] != string(test1S) {
 		t.Error("user1 did not receive mqtt notification on custom broker")
 	}
 	if len(msgs2) != 0 {

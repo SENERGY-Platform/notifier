@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"log"
 	"net/http"
 )
@@ -38,7 +38,7 @@ func (this *Controller) handleMqttNotificationUpdate(userId string, notification
 		go func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			publisher, err := mqtt.NewPublisher(ctx, broker.Address, broker.User, broker.Password, this.config.MqttClientPrefix+uuid.NewV4().String(),
+			publisher, err := mqtt.NewPublisher(ctx, broker.Address, broker.User, broker.Password, this.config.MqttClientPrefix+uuid.NewString(),
 				broker.Qos, this.config.Debug)
 			if err != nil {
 				log.Println("ERROR:", err.Error())

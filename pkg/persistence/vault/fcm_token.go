@@ -21,7 +21,7 @@ import (
 	"errors"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"github.com/senergy-platform/vault-jwt-go/vault"
 	"net/http"
 	"strings"
@@ -73,7 +73,7 @@ func (manager *FcmTokenManager) Save(fcmToken *model.FcmToken) error {
 			return manager.vault.DestroyVersions(token.Id, old)
 		}
 	}
-	return manager.vault.WriteInterface(fcmToken.UserId+"_"+uuid.NewV4().String(), fcmToken)
+	return manager.vault.WriteInterface(fcmToken.UserId+"_"+uuid.NewString(), fcmToken)
 }
 
 func (manager *FcmTokenManager) Delete(fcmToken *model.FcmToken) (err error, errorCode int) {

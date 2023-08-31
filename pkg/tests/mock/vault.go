@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	uuid "github.com/satori/go.uuid"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -55,8 +55,8 @@ func getVaultRouter() (router *mux.Router, err error) {
 
 	router.HandleFunc("/v1/auth/jwt/login", func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-		token["request_id"] = uuid.NewV4()
-		token["lease_id"] = uuid.NewV4()
+		token["request_id"] = uuid.NewString()
+		token["lease_id"] = uuid.NewString()
 		err = json.NewEncoder(writer).Encode(token)
 		if err != nil {
 			log.Println("ERROR: unable to encode response", err)
@@ -67,8 +67,8 @@ func getVaultRouter() (router *mux.Router, err error) {
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		requestData := map[string]interface{}{}
 		_ = json.NewDecoder(request.Body).Decode(&requestData)
-		token["request_id"] = uuid.NewV4()
-		token["lease_id"] = uuid.NewV4()
+		token["request_id"] = uuid.NewString()
+		token["lease_id"] = uuid.NewString()
 		err = json.NewEncoder(writer).Encode(token)
 		if err != nil {
 			log.Println("ERROR: unable to encode response", err)
