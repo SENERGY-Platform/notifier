@@ -140,7 +140,7 @@ func TestBrokerCRUD(t *testing.T) {
 		t.Error("was allowed to read from another user")
 	}
 
-	test2, err = updateBroker(conf, "user2", test2)
+	_, err = updateBroker(conf, "user2", test2)
 	if err == nil {
 		t.Error("was allowed to update from another user")
 	}
