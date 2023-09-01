@@ -21,8 +21,8 @@ import (
 	"errors"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
+	"github.com/SENERGY-Platform/vault-jwt-go/vault"
 	"github.com/google/uuid"
-	"github.com/senergy-platform/vault-jwt-go/vault"
 	"net/http"
 	"strings"
 )

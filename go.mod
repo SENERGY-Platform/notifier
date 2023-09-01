@@ -6,12 +6,12 @@ toolchain go1.21.0
 
 require (
 	firebase.google.com/go/v4 v4.12.0
+	github.com/SENERGY-Platform/vault-jwt-go v0.0.0-20230901105919-f8b5475fb4a3
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/senergy-platform/vault-jwt-go v0.0.0-20230831081658-ff188ad2e271
 	github.com/testcontainers/testcontainers-go v0.23.0
 	go.mongodb.org/mongo-driver v1.12.1
 )
@@ -89,7 +89,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.138.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/appengine/v2 v2.0.4 // indirect
+	google.golang.org/appengine/v2 v2.0.5 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect

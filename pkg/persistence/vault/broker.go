@@ -21,7 +21,7 @@ import (
 	"errors"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
-	"github.com/senergy-platform/vault-jwt-go/vault"
+	"github.com/SENERGY-Platform/vault-jwt-go/vault"
 )
 
 type BrokerManager struct {
