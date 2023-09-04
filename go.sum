@@ -30,6 +30,8 @@ github.com/Microsoft/hcsshim v0.10.0-rc.8 h1:YSZVvlIIDD1UxQpJp0h+dnpLUw+TrY0cx8o
 github.com/Microsoft/hcsshim v0.10.0-rc.8/go.mod h1:OEthFdQv/AD2RAdzR6Mm1N1KPCztGKDurW1Z8b8VGMM=
 github.com/SENERGY-Platform/vault-jwt-go v0.0.0-20230901105919-f8b5475fb4a3 h1:bOqc2zvfGaBzjdOS9dM8KnPYDqB4zaIZnUo/AIDKS7E=
 github.com/SENERGY-Platform/vault-jwt-go v0.0.0-20230901105919-f8b5475fb4a3/go.mod h1:MZZxvuDLfyYYv5TEVl0JxdI9aPWXKnRm7FPRrEmGxWQ=
+github.com/SENERGY-Platform/vault-jwt-go v0.0.0-20230904060716-6561ce4b3f75 h1:RN6Zsd8T0bnjGTC0K+8To48FHDW6/1R7SwSmb46g59g=
+github.com/SENERGY-Platform/vault-jwt-go v0.0.0-20230904060716-6561ce4b3f75/go.mod h1:MZZxvuDLfyYYv5TEVl0JxdI9aPWXKnRm7FPRrEmGxWQ=
 github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgIH9cCH8=
 github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kBD4zp0CCIs=
 github.com/cenkalti/backoff/v3 v3.2.2 h1:cfUAAO3yvKMYKPrvhDuHSwQnhZNk/RMHKdZqKTxfm6M=

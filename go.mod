@@ -6,7 +6,7 @@ toolchain go1.21.0
 
 require (
 	firebase.google.com/go/v4 v4.12.0
-	github.com/SENERGY-Platform/vault-jwt-go v0.0.0-20230901105919-f8b5475fb4a3
+	github.com/SENERGY-Platform/vault-jwt-go v0.0.0-20230904060716-6561ce4b3f75
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.1
