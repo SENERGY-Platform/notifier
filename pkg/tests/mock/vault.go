@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime/debug"
+	"sync"
 )
 
 func MockVault(config *configuration.Config, ctx context.Context) (err error) {
@@ -37,6 +38,7 @@ func getVaultRouter() (router *mux.Router, err error) {
 	}()
 	router = mux.NewRouter()
 
+	tokenMux := sync.Mutex{}
 	token := map[string]interface{}{
 		"request_id":     "000",
 		"lease_id":       "123",
@@ -55,6 +57,8 @@ func getVaultRouter() (router *mux.Router, err error) {
 
 	router.HandleFunc("/v1/auth/jwt/login", func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		tokenMux.Lock()
+		defer tokenMux.Unlock()
 		token["request_id"] = uuid.NewString()
 		token["lease_id"] = uuid.NewString()
 		err = json.NewEncoder(writer).Encode(token)
@@ -67,6 +71,8 @@ func getVaultRouter() (router *mux.Router, err error) {
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		requestData := map[string]interface{}{}
 		_ = json.NewDecoder(request.Body).Decode(&requestData)
+		tokenMux.Lock()
+		defer tokenMux.Unlock()
 		token["request_id"] = uuid.NewString()
 		token["lease_id"] = uuid.NewString()
 		err = json.NewEncoder(writer).Encode(token)

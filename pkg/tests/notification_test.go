@@ -45,6 +45,8 @@ func TestNotificationCRUD(t *testing.T) {
 		return
 	}
 
+	time.Sleep(time.Second)
+
 	t.Run("empty list", listNotifications(conf, "user1", model.NotificationList{
 		Total:         0,
 		Limit:         10,
