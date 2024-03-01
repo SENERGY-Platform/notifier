@@ -3,12 +3,13 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"log"
+	"time"
+
 	"firebase.google.com/go/v4/errorutils"
 	"firebase.google.com/go/v4/messaging"
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
-	"log"
-	"time"
 )
 
 func (this *Controller) PutFcmToken(token auth.Token, fcmToken string) (err error, errCode int) {
@@ -71,7 +72,7 @@ func (this *Controller) handleFCMNotificationUpdate(userId string, notification 
 		}
 	}
 
-	responses, err := this.firebaseClient.SendMulticast(context.Background(), message)
+	responses, err := this.firebaseClient.SendEachForMulticast(context.Background(), message)
 	if err != nil {
 		log.Println("ERROR:", err.Error())
 		return
@@ -96,7 +97,7 @@ func (this *Controller) handleFCMNotificationDelete(userId string, ids []string)
 
 	encoded, _ := json.Marshal(ids)
 
-	responses, err := this.firebaseClient.SendMulticast(context.Background(), &messaging.MulticastMessage{
+	responses, err := this.firebaseClient.SendEachForMulticast(context.Background(), &messaging.MulticastMessage{
 		Tokens: tokens,
 		Data: map[string]string{
 			"type":    model.WsUpdateDeleteManyType,
