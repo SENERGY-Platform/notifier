@@ -85,4 +85,7 @@ type Controller interface {
 
 	PutFcmToken(token auth.Token, fcmToken string) (err error, errCode int)
 	DeleteFcmToken(token auth.Token, fcmToken string) (err error, errCode int)
+
+	GetSettings(token auth.Token) (settings model.Settings, err error, errCode int)
+	SetSettings(token auth.Token, settings model.Settings) (result model.Settings, err error, errCode int)
 }

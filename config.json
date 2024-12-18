@@ -6,6 +6,7 @@
     "mongo_notification_collection": "notifications",
     "mongo_broker_collection": "brokers",
     "mongo_platformbroker_collection": "platformbroker",
+    "mongo_settings_collection": "settings",
     "debug": false,
     "ws_ping_period": "10s",
     "jwt_signing_key": "",

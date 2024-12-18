@@ -96,4 +96,7 @@ type Persistence interface {
 	UpsertFcmToken(token model.FcmToken) (err error, errCode int)
 	DeleteFcmToken(token model.FcmToken) (err error, errCode int)
 	GetFcmTokens(userId string) (tokens []model.FcmToken, err error)
+
+	ReadSettings(userId string) (result model.Settings, err error, errCode int)
+	SetSettings(settings model.Settings) (error, int)
 }

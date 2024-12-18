@@ -35,6 +35,7 @@ type Config struct {
 	MongoNotificationCollection   string `json:"mongo_notification_collection"`
 	MongoBrokerCollection         string `json:"mongo_broker_collection"`
 	MongoPlatformBrokerCollection string `json:"mongo_platformbroker_collection"`
+	MongoSettingsCollection       string `json:"mongo_settings_collection"`
 	Debug                         bool   `json:"debug"`
 	JwtSigningKey                 string `json:"jwt_signing_key"` //without -----BEGIN PUBLIC KEY-----
 	WsPingPeriod                  string `json:"ws_ping_period"`

@@ -62,6 +62,7 @@ func New(conf configuration.Config) (*Mongo, error) {
 	initNotifications()
 	initBrokers()
 	initPlatformBrokers()
+	initSettings()
 	for _, creators := range CreateCollections {
 		err = creators(db)
 		if err != nil {

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
@@ -58,6 +59,14 @@ func (s *SendRequest) Send(remoteAddress string) (messageId string, err error) {
 
 func (this *Controller) handleEmailNotificationUpdate(token auth.Token, notification model.Notification) {
 	if len(token.Email) == 0 || !token.EmailVerified {
+		return
+	}
+	settings, err, _ := this.db.ReadSettings(token.GetUserId())
+	if err != nil {
+		log.Println("ERROR:", err.Error())
+		return
+	}
+	if !settings.EmailsEnabled {
 		return
 	}
 	email := SendRequest{
