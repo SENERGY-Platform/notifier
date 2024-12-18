@@ -50,6 +50,7 @@ func (this *Controller) SetNotification(token auth.Token, notification model.Not
 		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
 		go this.handleMqttNotificationUpdate(token.GetUserId(), notification)
 		go this.handleFCMNotificationUpdate(token.GetUserId(), notification)
+		go this.handleEmailNotificationUpdate(token, notification)
 	}
 	return notification, err, errCode
 }
@@ -78,6 +79,7 @@ func (this *Controller) CreateNotification(token auth.Token, notification model.
 		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
 		go this.handleMqttNotificationUpdate(token.GetUserId(), notification)
 		go this.handleFCMNotificationUpdate(token.GetUserId(), notification)
+		go this.handleEmailNotificationUpdate(token, notification)
 	}
 	return notification, err, errCode
 }

@@ -26,5 +26,7 @@
     "vault_cleanup_keys": false,
     "vault_ensure_migration": false,
     "fcm_project_id": "",
-    "fcm_iam_id": "backend"
+    "fcm_iam_id": "backend",
+    "mailpit_host_port": "mailpit:8025",
+    "email_from": ""
 }

@@ -40,10 +40,12 @@ func GetParsedToken(req *http.Request) (token Token, err error) {
 }
 
 type Token struct {
-	Token       string              `json:"-"`
-	Sub         string              `json:"sub,omitempty"`
-	RealmAccess map[string][]string `json:"realm_access,omitempty"`
-	Expiration  int64               `json:"exp"`
+	Token         string              `json:"-"`
+	Sub           string              `json:"sub,omitempty"`
+	RealmAccess   map[string][]string `json:"realm_access,omitempty"`
+	Expiration    int64               `json:"exp"`
+	Email         string              `json:"email"`
+	EmailVerified bool                `json:"email_verified"`
 }
 
 func (this *Token) String() string {

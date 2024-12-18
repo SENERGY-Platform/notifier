@@ -58,9 +58,12 @@ type Config struct {
 
 	FcmProjectId string `json:"fcm_project_id"`
 	FcmIamId     string `json:"fcm_iam_id"`
+
+	MailpitHostPort string `json:"mailpit_host_port"`
+	EmailFrom       string `json:"email_from"`
 }
 
-//loads config from json in location and used environment variables (e.g ZookeeperUrl --> ZOOKEEPER_URL)
+// loads config from json in location and used environment variables (e.g ZookeeperUrl --> ZOOKEEPER_URL)
 func Load(location string) (config Config, err error) {
 	file, err := os.Open(location)
 	if err != nil {
