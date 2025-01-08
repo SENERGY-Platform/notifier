@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
@@ -70,5 +71,8 @@ func (this *Controller) handleEmailNotificationUpdate(token auth.Token, notifica
 		Subject: notification.Title,
 		Text:    notification.Message,
 	}
-	email.Send(this.config.MailpitHostPort)
+	_, err := email.Send(this.config.MailpitHostPort)
+	if err != nil {
+		log.Println("ERROR: Sending Email failed: " + err.Error())
+	}
 }
