@@ -18,16 +18,17 @@ package api
 
 import (
 	"encoding/json"
+	"log"
+	"net/http"
+
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/gorilla/mux"
-	"log"
-	"net/http"
 )
 
 func init() {
-	endpoints = append(endpoints, PlatformBrokerEndpoints)
+	endpoints = append(endpoints, SettingsEndpoints)
 }
 
 func SettingsEndpoints(_ configuration.Config, control Controller, router *mux.Router) {
@@ -59,7 +60,7 @@ func SettingsEndpoints(_ configuration.Config, control Controller, router *mux.R
 			http.Error(writer, err.Error(), http.StatusUnauthorized)
 			return
 		}
-		var settings model.Settings
+		settings := model.Settings{}
 		err = json.NewDecoder(request.Body).Decode(&settings)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)

@@ -18,12 +18,14 @@ package controller
 
 import (
 	"errors"
+	"net/http"
+	"slices"
+	"time"
+
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"net/http"
-	"time"
 )
 
 func (this *Controller) ListNotifications(token auth.Token, options persistence.ListOptions) (result model.NotificationList, err error, errCode int) {
@@ -41,16 +43,20 @@ func (this *Controller) ReadNotification(token auth.Token, id string) (result mo
 }
 
 func (this *Controller) SetNotification(token auth.Token, notification model.Notification) (result model.Notification, err error, errCode int) {
-	_, err, errCode = this.db.ReadNotification(token.GetUserId(), notification.Id) // Check existence before set
+	existing, err, errCode := this.db.ReadNotification(token.GetUserId(), notification.Id) // Check existence before set, this already checks for user id
+	if err != nil {
+		return model.Notification{}, err, errCode
+	}
+	if existing.Topic != notification.Topic {
+		return result, errors.New("change of topic is not allowed"), http.StatusBadRequest
+	}
+	settings, err, errCode := this.getSettings(token.GetUserId())
 	if err != nil {
 		return model.Notification{}, err, errCode
 	}
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
-		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
-		go this.handleMqttNotificationUpdate(token.GetUserId(), notification)
-		go this.handleFCMNotificationUpdate(token.GetUserId(), notification)
-		go this.handleEmailNotificationUpdate(token, notification)
+		this.handleUpdate(notification, token, settings)
 	}
 	return notification, err, errCode
 }
@@ -58,6 +64,9 @@ func (this *Controller) SetNotification(token auth.Token, notification model.Not
 func (this *Controller) CreateNotification(token auth.Token, notification model.Notification, ignoreDuplicatesWithinSeconds *int64) (result model.Notification, err error, errCode int) {
 	if notification.Id != "" {
 		return result, errors.New("specifing id is not allowed"), http.StatusBadRequest
+	}
+	if !slices.Contains(model.AllTopics(), notification.Topic) {
+		return result, errors.New("the specified topic is not allowed"), http.StatusBadRequest
 	}
 	if ignoreDuplicatesWithinSeconds != nil {
 		notOlderThan := time.Unix(time.Now().Unix()-*ignoreDuplicatesWithinSeconds, 0)
@@ -74,12 +83,13 @@ func (this *Controller) CreateNotification(token auth.Token, notification model.
 	if notification.CreatedAt.Before(time.UnixMilli(0)) {
 		notification.CreatedAt = time.Now().Truncate(time.Millisecond)
 	}
+	settings, err, errCode := this.getSettings(token.GetUserId())
+	if err != nil {
+		return model.Notification{}, err, errCode
+	}
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
-		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
-		go this.handleMqttNotificationUpdate(token.GetUserId(), notification)
-		go this.handleFCMNotificationUpdate(token.GetUserId(), notification)
-		go this.handleEmailNotificationUpdate(token, notification)
+		this.handleUpdate(notification, token, settings)
 	}
 	return notification, err, errCode
 }
@@ -91,4 +101,46 @@ func (this *Controller) DeleteMultipleNotifications(token auth.Token, ids []stri
 		go this.handleFCMNotificationDelete(token.GetUserId(), ids)
 	}
 	return
+	/*
+		delete does not consider settings for channels and topics.
+		all channels will receive delete messages on all topics.
+		expecting the client implementations to handle unsolicitated delete messages.
+		reasoning: respecting settings would need to load and inspect each message
+		before deletion in order to know its topic.
+		this would increase the latency for deleting high numbers of notifications (e.g. in a "delete all" scenario)
+	*/
+}
+
+func (this *Controller) getSettings(userId string) (model.Settings, error, int) {
+	settings, err, errCode := this.db.ReadSettings(userId)
+	if err != nil && errCode != http.StatusNotFound {
+		return model.Settings{}, err, errCode
+	}
+	if errCode == http.StatusNotFound {
+		settings = model.DefaultSettings()
+	}
+	return settings, err, errCode
+}
+
+func (this *Controller) handleUpdate(notification model.Notification, token auth.Token, settings model.Settings) {
+	if len(notification.Topic) == 0 {
+		notification.Topic = model.TopicUnknown
+	}
+
+	conf, ok := settings.ChannelTopicConfig[model.ChannelWebsocket]
+	if !ok || slices.Contains(conf, notification.Topic) {
+		go this.handleWsNotificationUpdate(token.GetUserId(), notification)
+	}
+	conf, ok = settings.ChannelTopicConfig[model.ChannelMqtt]
+	if !ok || slices.Contains(conf, notification.Topic) {
+		go this.handleMqttNotificationUpdate(token.GetUserId(), notification)
+	}
+	conf, ok = settings.ChannelTopicConfig[model.ChannelFcm]
+	if !ok || slices.Contains(conf, notification.Topic) {
+		go this.handleFCMNotificationUpdate(token.GetUserId(), notification)
+	}
+	conf, ok = settings.ChannelTopicConfig[model.ChannelEmail]
+	if !ok || slices.Contains(conf, notification.Topic) {
+		go this.handleEmailNotificationUpdate(token, notification)
+	}
 }

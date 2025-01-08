@@ -16,7 +16,32 @@
 
 package model
 
+type Channel = string
+
+const ChannelWebsocket = "websoket"
+const ChannelMqtt = "mqtt"
+const ChannelFcm = "push"
+const ChannelEmail = "email"
+
+func AllChannels() []Channel {
+	return []Channel{
+		ChannelWebsocket,
+		ChannelMqtt,
+		ChannelFcm,
+		ChannelEmail,
+	}
+}
+
 type Settings struct {
-	EmailsEnabled bool   `json:"emails_enabled"`
-	UserId        string `json:"-" bson:"user_id"`
+	UserId             string              `json:"-" bson:"user_id"`
+	ChannelTopicConfig map[Channel][]Topic `json:"channel_topic_config" bson:"channel_topic_config"`
+}
+
+func DefaultSettings() Settings {
+	ChannelTopicConfig := map[Channel][]Topic{}
+	topics := append(AllTopics(), TopicUnknown) // here the user should be able to set settings for TopicUnknown
+	for _, channel := range AllChannels() {
+		ChannelTopicConfig[channel] = topics
+	}
+	return Settings{ChannelTopicConfig: ChannelTopicConfig}
 }

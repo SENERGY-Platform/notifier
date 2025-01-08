@@ -17,18 +17,26 @@
 package controller
 
 import (
+	"net/http"
+
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
-	"net/http"
 )
 
 func (this *Controller) GetSettings(token auth.Token) (settings model.Settings, err error, errCode int) {
 	settings, err, errCode = this.db.ReadSettings(token.GetUserId())
 	if err != nil && errCode == http.StatusNotFound {
-		settings = model.Settings{
-			EmailsEnabled: true,
+		return model.DefaultSettings(), nil, http.StatusOK
+	}
+	if settings.ChannelTopicConfig == nil {
+		settings.ChannelTopicConfig = map[model.Channel][]model.Topic{}
+	}
+	for _, channel := range model.AllChannels() {
+		conf, ok := settings.ChannelTopicConfig[channel]
+		if !ok {
+			conf = append(model.AllTopics(), model.TopicUnknown)
 		}
-		return this.SetSettings(token, settings)
+		settings.ChannelTopicConfig[channel] = conf
 	}
 	return
 }

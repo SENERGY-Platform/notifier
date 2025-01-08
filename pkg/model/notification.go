@@ -22,6 +22,28 @@ import (
 	"time"
 )
 
+type Topic = string
+
+const TopicProcesses = "processes"
+const TopicSmartService = "smart_service"
+const TopicDeviceOffline = "device_offline"
+const TopicDeveloper = "developer"
+const TopicConnector = "connector"
+const TopicMGW = "mgw"
+const TopicUnknown = "unknown"
+
+func AllTopics() []Topic {
+	return []Topic{
+		TopicProcesses,
+		TopicSmartService,
+		TopicDeviceOffline,
+		TopicDeveloper,
+		TopicConnector,
+		TopicMGW,
+		//TopicUnknown, excluded on purpose. TopicUnknown should never be set but serve for notifications without a topic set
+	}
+}
+
 type Notification struct {
 	Id        string    `json:"_id" bson:"_id"`
 	UserId    string    `json:"userId" bson:"userId"`
@@ -29,6 +51,7 @@ type Notification struct {
 	Message   string    `json:"message" bson:"message"`
 	IsRead    bool      `json:"isRead" bson:"isRead"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+	Topic     `json:"topic" bson:"topic"`
 	hash      [32]byte
 }
 
@@ -37,7 +60,7 @@ func (n *Notification) ToDB() (db NotificationDB, err error) {
 	if err != nil {
 		return db, err
 	}
-	db.UserId, db.Title, db.Message, db.IsRead, db.CreatedAt, db.Hash = n.UserId, n.Title, n.Message, n.IsRead, n.CreatedAt, n.Hash()
+	db.UserId, db.Title, db.Message, db.IsRead, db.CreatedAt, db.Topic, db.Hash = n.UserId, n.Title, n.Message, n.IsRead, n.CreatedAt, n.Topic, n.Hash()
 	return
 }
 
@@ -51,7 +74,8 @@ func (n *Notification) Equal(other interface{}) bool {
 		n.CreatedAt.Equal(otherN.CreatedAt) &&
 		n.Title == otherN.Title &&
 		n.Message == otherN.Message &&
-		n.UserId == otherN.UserId
+		n.UserId == otherN.UserId &&
+		n.Topic == otherN.Topic
 }
 
 func (n *Notification) Hash() [32]byte {
@@ -60,7 +84,7 @@ func (n *Notification) Hash() [32]byte {
 			return n.hash
 		}
 	}
-	n.hash = sha256.Sum256([]byte(n.Title + "___" + n.Message))
+	n.hash = sha256.Sum256([]byte(n.Title + "___" + n.Message + "____" + n.Topic))
 	return n.hash
 }
 
@@ -71,7 +95,8 @@ type NotificationDB struct {
 	Message   string             `bson:"message"`
 	IsRead    bool               `bson:"isRead"`
 	CreatedAt time.Time          `bson:"created_at"`
-	Hash      [32]byte           `bson:"hash"`
+	Topic     `bson:"topic"`
+	Hash      [32]byte `bson:"hash"`
 }
 
 type NotificationList struct {
