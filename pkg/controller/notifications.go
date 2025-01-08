@@ -65,7 +65,10 @@ func (this *Controller) CreateNotification(token auth.Token, notification model.
 	if notification.Id != "" {
 		return result, errors.New("specifing id is not allowed"), http.StatusBadRequest
 	}
-	if !slices.Contains(model.AllTopics(), notification.Topic) {
+	if len(notification.Topic) == 0 {
+		notification.Topic = model.TopicUnknown
+	}
+	if !slices.Contains(append(model.AllTopics(), model.TopicUnknown), notification.Topic) {
 		return result, errors.New("the specified topic is not allowed"), http.StatusBadRequest
 	}
 	if ignoreDuplicatesWithinSeconds != nil {
@@ -119,7 +122,7 @@ func (this *Controller) getSettings(userId string) (model.Settings, error, int) 
 	if errCode == http.StatusNotFound {
 		settings = model.DefaultSettings()
 	}
-	return settings, err, errCode
+	return settings, nil, http.StatusOK
 }
 
 func (this *Controller) handleUpdate(notification model.Notification, token auth.Token, settings model.Settings) {

@@ -18,13 +18,14 @@ package tests
 
 import (
 	"encoding/json"
+	"testing"
+	"time"
+
 	"github.com/SENERGY-Platform/notifier/pkg"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
 	paho "github.com/eclipse/paho.mqtt.golang"
 	"github.com/google/uuid"
-	"testing"
-	"time"
 )
 
 func TestMQTT(t *testing.T) {
@@ -109,6 +110,7 @@ func TestMQTT(t *testing.T) {
 
 	test1, err := createNotification(conf, "user1", model.Notification{
 		Title: "test1",
+		Topic: model.TopicDeveloper,
 	}, nil)
 	if err != nil {
 		t.Error(err)

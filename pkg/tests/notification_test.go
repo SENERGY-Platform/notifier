@@ -59,6 +59,7 @@ func TestNotificationCRUD(t *testing.T) {
 		Title:   "test1",
 		Message: "test1",
 		IsRead:  false,
+		Topic:   model.TopicDeveloper,
 	}, nil)
 	if err != nil {
 		t.Error(err)
@@ -74,6 +75,7 @@ func TestNotificationCRUD(t *testing.T) {
 		Title:   "test2",
 		Message: "test2",
 		IsRead:  false,
+		Topic:   model.TopicMGW,
 	})
 	if err != nil {
 		t.Error(err)
@@ -89,6 +91,7 @@ func TestNotificationCRUD(t *testing.T) {
 		Title:   "test3",
 		Message: "test3",
 		IsRead:  false,
+		Topic:   model.TopicConnector,
 	}, nil)
 	if err != nil {
 		t.Error(err)
@@ -140,7 +143,19 @@ func TestNotificationCRUD(t *testing.T) {
 		IsRead:  false,
 	}, nil)
 	if err == nil {
-		t.Error("was allowed to specified ID")
+		t.Error("was allowed to specify ID")
+	}
+
+	_, err = createNotification(conf, "user2", model.Notification{
+		Id:      "1234",
+		UserId:  "user2",
+		Title:   "test3",
+		Message: "test3",
+		IsRead:  false,
+		Topic:   model.TopicUnknown,
+	}, nil)
+	if err == nil {
+		t.Error("was allowed to specify topic unknown")
 	}
 
 	_, err = createNotification(conf, "user2", model.Notification{
