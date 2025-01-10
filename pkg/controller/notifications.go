@@ -43,12 +43,9 @@ func (this *Controller) ReadNotification(token auth.Token, id string) (result mo
 }
 
 func (this *Controller) SetNotification(token auth.Token, notification model.Notification) (result model.Notification, err error, errCode int) {
-	existing, err, errCode := this.db.ReadNotification(token.GetUserId(), notification.Id) // Check existence before set, this already checks for user id
+	_, err, errCode = this.db.ReadNotification(token.GetUserId(), notification.Id) // Check existence before set, this already checks for user id
 	if err != nil {
 		return model.Notification{}, err, errCode
-	}
-	if existing.Topic != notification.Topic {
-		return result, errors.New("change of topic is not allowed"), http.StatusBadRequest
 	}
 	settings, err, errCode := this.getSettings(token.GetUserId())
 	if err != nil {
