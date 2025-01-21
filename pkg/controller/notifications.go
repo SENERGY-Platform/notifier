@@ -89,7 +89,7 @@ func (this *Controller) CreateNotification(token auth.Token, notification model.
 	}
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
-		this.handleUpdate(notification, token, settings)
+		this.handleCreate(notification, token, settings)
 	}
 	return notification, err, errCode
 }
@@ -122,6 +122,19 @@ func (this *Controller) getSettings(userId string) (model.Settings, error, int) 
 	return settings, nil, http.StatusOK
 }
 
+func (this *Controller) handleCreate(notification model.Notification, token auth.Token, settings model.Settings) {
+	if len(notification.Topic) == 0 {
+		notification.Topic = model.TopicUnknown
+	}
+
+	conf, ok := settings.ChannelTopicConfig[model.ChannelEmail]
+	if !ok || slices.Contains(conf, notification.Topic) {
+		go this.handleEmailNotificationUpdate(token, notification)
+	}
+
+	this.handleUpdate(notification, token, settings)
+}
+
 func (this *Controller) handleUpdate(notification model.Notification, token auth.Token, settings model.Settings) {
 	if len(notification.Topic) == 0 {
 		notification.Topic = model.TopicUnknown
@@ -138,9 +151,5 @@ func (this *Controller) handleUpdate(notification model.Notification, token auth
 	conf, ok = settings.ChannelTopicConfig[model.ChannelFcm]
 	if !ok || slices.Contains(conf, notification.Topic) {
 		go this.handleFCMNotificationUpdate(token.GetUserId(), notification)
-	}
-	conf, ok = settings.ChannelTopicConfig[model.ChannelEmail]
-	if !ok || slices.Contains(conf, notification.Topic) {
-		go this.handleEmailNotificationUpdate(token, notification)
 	}
 }
