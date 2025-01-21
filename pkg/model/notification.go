@@ -30,6 +30,7 @@ const TopicDeviceOffline = "device_offline"
 const TopicDeveloper = "developer"
 const TopicConnector = "connector"
 const TopicMGW = "mgw"
+const TopicIncident = "incident"
 const TopicUnknown = "unknown"
 
 func AllTopics() []Topic {
@@ -40,6 +41,7 @@ func AllTopics() []Topic {
 		TopicDeveloper,
 		TopicConnector,
 		TopicMGW,
+		TopicIncident,
 		//TopicUnknown, excluded on purpose. TopicUnknown should never be set but serve for notifications without a topic set
 	}
 }
