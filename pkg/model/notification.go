@@ -31,6 +31,7 @@ const TopicDeveloper = "developer"
 const TopicConnector = "connector"
 const TopicMGW = "mgw"
 const TopicIncident = "incident"
+const TopicAnalytics = "analytics"
 const TopicUnknown = "unknown"
 
 func AllTopics() []Topic {
@@ -42,6 +43,7 @@ func AllTopics() []Topic {
 		TopicConnector,
 		TopicMGW,
 		TopicIncident,
+		TopicAnalytics,
 		//TopicUnknown, excluded on purpose. TopicUnknown should never be set but serve for notifications without a topic set
 	}
 }
