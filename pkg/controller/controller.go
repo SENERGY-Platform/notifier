@@ -18,16 +18,18 @@ package controller
 
 import (
 	"context"
+	"log"
+	"sync"
+	"time"
+
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
+	"github.com/SENERGY-Platform/vault-jwt-go/vault/vaultjwt"
 	"github.com/google/uuid"
-	"log"
-	"sync"
-	"time"
 )
 
 type Controller struct {
@@ -37,9 +39,10 @@ type Controller struct {
 	sessions              map[string][]*WsSession
 	platformMqttPublisher *mqtt.Publisher
 	firebaseClient        *messaging.Client
+	clientToken           *vaultjwt.OpenidToken
 }
 
-func New(config configuration.Config, db Persistence) *Controller {
+func New(config configuration.Config, db Persistence, ctx context.Context) (*Controller, error) {
 	var publisher *mqtt.Publisher
 	if config.PlatformMqttAddress != "" && config.PlatformMqttAddress != "-" {
 		var err error
@@ -66,14 +69,17 @@ func New(config configuration.Config, db Persistence) *Controller {
 		}
 	}
 
-	return &Controller{
+	c := &Controller{
 		config:                config,
 		db:                    db,
 		sessionsMux:           sync.Mutex{},
 		sessions:              make(map[string][]*WsSession),
 		platformMqttPublisher: publisher,
 		firebaseClient:        firebaseClient,
+		clientToken:           &vaultjwt.OpenidToken{},
 	}
+
+	return c, nil
 }
 
 type Persistence interface {

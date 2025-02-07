@@ -36,7 +36,10 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config configuration.Config)
 		db.Disconnect()
 		wg.Done()
 	}()
-	ctrl := controller.New(config, db)
+	ctrl, err := controller.New(config, db, ctx)
+	if err != nil {
+		return err
+	}
 	api.Start(ctx, wg, config, ctrl)
 	return nil
 }

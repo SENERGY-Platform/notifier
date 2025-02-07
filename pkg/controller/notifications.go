@@ -18,6 +18,7 @@ package controller
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"time"
@@ -58,7 +59,13 @@ func (this *Controller) SetNotification(token auth.Token, notification model.Not
 	return notification, err, errCode
 }
 
-func (this *Controller) CreateNotification(token auth.Token, notification model.Notification, ignoreDuplicatesWithinSeconds *int64) (result model.Notification, err error, errCode int) {
+func (this *Controller) CreateNotification(token *auth.Token, notification model.Notification, ignoreDuplicatesWithinSeconds *int64) (result model.Notification, err error, errCode int) {
+	if token == nil { //internal access
+		token, err = this.createInternalUserToken(notification.UserId)
+		if err != nil {
+			return model.Notification{}, fmt.Errorf("unable to get user info"), http.StatusInternalServerError
+		}
+	}
 	if notification.Id != "" {
 		return result, errors.New("specifing id is not allowed"), http.StatusBadRequest
 	}
@@ -89,7 +96,7 @@ func (this *Controller) CreateNotification(token auth.Token, notification model.
 	}
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
-		this.handleCreate(notification, token, settings)
+		this.handleCreate(notification, *token, settings)
 	}
 	return notification, err, errCode
 }

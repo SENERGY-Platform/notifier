@@ -102,23 +102,19 @@ func NotificationsEndpoints(_ configuration.Config, control Controller, router *
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		var token auth.Token
-		if len(auth.GetAuthToken(request)) > 0 {
-			token, err = auth.GetParsedToken(request)
+		var token *auth.Token
+		if len(auth.GetAuthToken(request)) > 0 { // access without token = admin
+			tokenT, err := auth.GetParsedToken(request)
 			if err != nil {
 				http.Error(writer, err.Error(), http.StatusUnauthorized)
 				return
 			}
-		} else {
-			// access without token = admin
-			token = auth.Token{
-				Sub: notification.UserId,
-			}
+			token = &tokenT
 		}
 		if notification.UserId == "" {
 			notification.UserId = token.GetUserId()
 		}
-		if token.GetUserId() != notification.UserId {
+		if token != nil && token.GetUserId() != notification.UserId {
 			http.Error(writer, "You may only send messages to yourself", http.StatusUnauthorized)
 			return
 		}

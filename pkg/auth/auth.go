@@ -36,7 +36,7 @@ func GetAuthToken(req *http.Request) string {
 }
 
 func GetParsedToken(req *http.Request) (token Token, err error) {
-	return parse(GetAuthToken(req))
+	return Parse(GetAuthToken(req))
 }
 
 type Token struct {
@@ -63,7 +63,7 @@ func (this *Token) Valid() error {
 	return nil
 }
 
-func parse(token string) (claims Token, err error) {
+func Parse(token string) (claims Token, err error) {
 	orig := token
 	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
 		token = token[7:]
@@ -111,6 +111,11 @@ func (this *Token) GetUserId() string {
 func (this *Token) IsExpired() bool {
 	expiresIn := time.Unix(this.Expiration, 0).Sub(TimeNow())
 	return expiresIn <= 0
+}
+
+func (this *Token) ExpiresBefore(buffer time.Duration) bool {
+	expiresIn := time.Unix(this.Expiration, 0).Sub(TimeNow())
+	return expiresIn <= time.Duration(buffer)
 }
 
 func contains(s []string, e string) bool {
