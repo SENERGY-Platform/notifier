@@ -41,7 +41,8 @@ func DefaultSettings() Settings {
 	ChannelTopicConfig := map[Channel][]Topic{}
 	topics := append(AllTopics(), TopicUnknown) // here the user should be able to set settings for TopicUnknown
 	for _, channel := range AllChannels() {
-		ChannelTopicConfig[channel] = topics
+		ChannelTopicConfig[channel] = topics // all channels use all topics
 	}
+	ChannelTopicConfig[ChannelFcm] = []Topic{TopicProcesses} // ChannelFcm uses only TopicProcesses
 	return Settings{ChannelTopicConfig: ChannelTopicConfig}
 }

@@ -24,20 +24,22 @@ import (
 )
 
 func (this *Controller) GetSettings(token auth.Token) (settings model.Settings, err error, errCode int) {
+	baseSettings := model.DefaultSettings()
 	settings, err, errCode = this.db.ReadSettings(token.GetUserId())
 	if err != nil && errCode == http.StatusNotFound {
-		return model.DefaultSettings(), nil, http.StatusOK
+		return baseSettings, nil, http.StatusOK
 	}
 	if settings.ChannelTopicConfig == nil {
 		settings.ChannelTopicConfig = map[model.Channel][]model.Topic{}
 	}
-	for _, channel := range model.AllChannels() {
-		conf, ok := settings.ChannelTopicConfig[channel]
-		if !ok {
-			conf = append(model.AllTopics(), model.TopicUnknown)
+	// use default settings as base and replace each channel with saved settings
+	for channel := range baseSettings.ChannelTopicConfig {
+		set, ok := settings.ChannelTopicConfig[channel]
+		if ok {
+			baseSettings.ChannelTopicConfig[channel] = set
 		}
-		settings.ChannelTopicConfig[channel] = conf
 	}
+	settings = baseSettings
 	return
 }
 
