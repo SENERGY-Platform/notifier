@@ -66,7 +66,7 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config configuration.Config,
 }
 
 type Controller interface {
-	ListNotifications(token auth.Token, options persistence.ListOptions) (result model.NotificationList, err error, errCode int)
+	ListNotifications(token auth.Token, options persistence.ListOptions, channel model.Channel) (result model.NotificationList, err error, errCode int)
 	ReadNotification(token auth.Token, id string) (result model.Notification, err error, errCode int)
 	CreateNotification(token *auth.Token, notification model.Notification, ignoreDuplicatesWithinSeconds *int64) (result model.Notification, err error, errCode int)
 	SetNotification(token auth.Token, notification model.Notification) (result model.Notification, err error, errCode int)

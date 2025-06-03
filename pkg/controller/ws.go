@@ -199,7 +199,7 @@ func (this *Controller) handleWsRefresh(session *WsSession) error {
 	list, err, _ := this.ListNotifications(*session.token, persistence.ListOptions{
 		Limit:  1000000,
 		Offset: 0,
-	})
+	}, model.ChannelWebsocket)
 	if err != nil {
 		return err
 	}

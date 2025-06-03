@@ -29,9 +29,20 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (this *Controller) ListNotifications(token auth.Token, options persistence.ListOptions) (result model.NotificationList, err error, errCode int) {
+func (this *Controller) ListNotifications(token auth.Token, options persistence.ListOptions, channel model.Channel) (result model.NotificationList, err error, errCode int) {
 	result.Limit, result.Offset = options.Limit, options.Offset
-	result.Notifications, result.Total, err, errCode = this.db.ListNotifications(token.GetUserId(), options)
+	topics := []model.Topic(append(model.AllTopics(), model.TopicUnknown))
+	if !slices.Contains(model.AllChannels(), channel) {
+		return result, fmt.Errorf("unknown channel %s", channel), http.StatusBadRequest
+	}
+	if len(channel) > 0 {
+		settings, err, code := this.GetSettings(token)
+		if err != nil {
+			return result, err, code
+		}
+		topics = settings.ChannelTopicConfig[channel]
+	}
+	result.Notifications, result.Total, err, errCode = this.db.ListNotifications(token.GetUserId(), options, topics)
 	return
 }
 

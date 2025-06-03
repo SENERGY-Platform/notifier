@@ -61,7 +61,7 @@ func NotificationsEndpoints(_ configuration.Config, control Controller, router *
 			return
 		}
 
-		result, err, errCode := control.ListNotifications(token, options)
+		result, err, errCode := control.ListNotifications(token, options, request.URL.Query().Get("channel"))
 		if err != nil {
 			http.Error(writer, err.Error(), errCode)
 			return

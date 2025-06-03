@@ -18,15 +18,16 @@ package mongo
 
 import (
 	"errors"
+	"log"
+	"net/http"
+	"time"
+
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"log"
-	"net/http"
-	"time"
 )
 
 const notificationTitleFieldName = "Title"
@@ -37,6 +38,7 @@ var notificationUserIdKey = "userId"
 var notificationCreatedAtKey string
 var notificationIdKey = "_id"
 var notificationHashKey = "hash"
+var topicKey = "topic"
 
 func initNotifications() {
 	var err error
@@ -72,13 +74,13 @@ func (this *Mongo) notificationCollection() *mongo.Collection {
 	return this.client.Database(this.config.MongoTable).Collection(this.config.MongoNotificationCollection)
 }
 
-func (this *Mongo) ListNotifications(userId string, o persistence.ListOptions) (result []model.Notification, total int64, err error, errCode int) {
+func (this *Mongo) ListNotifications(userId string, o persistence.ListOptions, topics []model.Topic) (result []model.Notification, total int64, err error, errCode int) {
 	result = []model.Notification{}
 	opt := options.Find()
 	opt.SetLimit(int64(o.Limit))
 	opt.SetSkip(int64(o.Offset))
 
-	filter := bson.M{notificationUserIdKey: userId}
+	filter := bson.M{notificationUserIdKey: userId, topicKey: bson.M{"$in": topics}}
 
 	ctx, _ := getTimeoutContext()
 	collection := this.notificationCollection()
