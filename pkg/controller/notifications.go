@@ -31,7 +31,7 @@ import (
 
 func (this *Controller) ListNotifications(token auth.Token, options persistence.ListOptions, channel model.Channel) (result model.NotificationList, err error, errCode int) {
 	result.Limit, result.Offset = options.Limit, options.Offset
-	topics := []model.Topic(append(model.AllTopics(), model.TopicUnknown))
+	topics := []model.Topic(append(model.AllTopics(), model.TopicUnknown, ""))
 	if len(channel) > 0 {
 		if !slices.Contains(model.AllChannels(), channel) {
 			return result, fmt.Errorf("unknown channel %s", channel), http.StatusBadRequest
@@ -55,7 +55,7 @@ func (this *Controller) ReadNotification(token auth.Token, id string) (result mo
 }
 
 func (this *Controller) SetNotification(token auth.Token, notification model.Notification) (result model.Notification, err error, errCode int) {
-	_, err, errCode = this.db.ReadNotification(token.GetUserId(), notification.Id) // Check existence before set, this already checks for user id
+	existing, err, errCode := this.db.ReadNotification(token.GetUserId(), notification.Id) // Check existence before set, this already checks for user id
 	if err != nil {
 		return model.Notification{}, err, errCode
 	}
@@ -63,6 +63,9 @@ func (this *Controller) SetNotification(token auth.Token, notification model.Not
 	if err != nil {
 		return model.Notification{}, err, errCode
 	}
+	// retain immutable fields
+	notification.Topic = existing.Topic
+	notification.CreatedAt = existing.CreatedAt
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
 		this.handleUpdate(notification, token, settings)
