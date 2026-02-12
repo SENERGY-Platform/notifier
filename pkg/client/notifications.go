@@ -35,7 +35,7 @@ func (c *Client) ReadNotification(token *string, id string) (result model.Notifi
 }
 func (c *Client) CreateNotification(token *string, notification model.Notification, ignoreDuplicatesWithinSeconds *int64) (result model.Notification, err error) {
 	return do[model.Notification]("POST", c.notifierUrl+"/notifications", token, notification, map[string]string{
-		"ignoreDuplicatesWithinSeconds": fmt.Sprintf("%d", *ignoreDuplicatesWithinSeconds),
+		"ignore_duplicates_within_seconds": fmt.Sprintf("%d", *ignoreDuplicatesWithinSeconds),
 	})
 }
 func (c *Client) SetNotification(token *string, notification model.Notification) (result model.Notification, err error) {
