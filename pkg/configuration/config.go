@@ -62,6 +62,8 @@ type Config struct {
 
 	MailpitHostPort string `json:"mailpit_host_port"`
 	EmailFrom       string `json:"email_from"`
+
+	LogHandler string `json:"log_handler"`
 }
 
 // loads config from json in location and used environment variables (e.g ZookeeperUrl --> ZOOKEEPER_URL)

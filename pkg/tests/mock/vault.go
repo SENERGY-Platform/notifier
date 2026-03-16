@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/SENERGY-Platform/notifier/pkg/configuration"
-	"github.com/google/uuid"
-	"github.com/gorilla/mux"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"runtime/debug"
 	"sync"
+
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
+	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 )
 
 func MockVault(config *configuration.Config, ctx context.Context) (err error) {
@@ -32,7 +34,7 @@ func MockVault(config *configuration.Config, ctx context.Context) (err error) {
 func getVaultRouter() (router *mux.Router, err error) {
 	defer func() {
 		if r := recover(); r != nil && err == nil {
-			log.Printf("%s: %s", r, debug.Stack())
+			log.Logger.Error("panic in vault mock router", "panic", fmt.Sprint(r), "stack", string(debug.Stack()))
 			err = errors.New(fmt.Sprint("Recovered Error: ", r))
 		}
 	}()
@@ -63,7 +65,7 @@ func getVaultRouter() (router *mux.Router, err error) {
 		token["lease_id"] = uuid.NewString()
 		err = json.NewEncoder(writer).Encode(token)
 		if err != nil {
-			log.Println("ERROR: unable to encode response", err)
+			log.Logger.Error("unable to encode response", attributes.ErrorKey, err)
 		}
 	}).Methods(http.MethodPost)
 
@@ -77,7 +79,7 @@ func getVaultRouter() (router *mux.Router, err error) {
 		token["lease_id"] = uuid.NewString()
 		err = json.NewEncoder(writer).Encode(token)
 		if err != nil {
-			log.Println("ERROR: unable to encode response", err)
+			log.Logger.Error("unable to encode response", attributes.ErrorKey, err)
 		}
 	}).Methods(http.MethodPut)
 
@@ -89,7 +91,7 @@ func getVaultRouter() (router *mux.Router, err error) {
 			},
 		})
 		if err != nil {
-			log.Println("ERROR: unable to encode response", err)
+			log.Logger.Error("unable to encode response", attributes.ErrorKey, err)
 		}
 	}).Methods(http.MethodGet)
 
@@ -110,7 +112,7 @@ func getVaultRouter() (router *mux.Router, err error) {
 			"data": map[string]interface{}{"keys": keys},
 		})
 		if err != nil {
-			log.Println("ERROR: unable to encode response", err)
+			log.Logger.Error("unable to encode response", attributes.ErrorKey, err)
 		}
 	}).Methods("LIST", http.MethodGet)
 

@@ -18,16 +18,18 @@ package tests
 
 import (
 	"context"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"log"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func MongoContainer(ctx context.Context, wg *sync.WaitGroup) (hostport string, containerip string, err error) {
-	log.Println("start mongo")
+	log.Logger.Info("start mongo")
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "mongo:4.1.11",
@@ -48,7 +50,10 @@ func MongoContainer(ctx context.Context, wg *sync.WaitGroup) (hostport string, c
 	go func() {
 		defer wg.Done()
 		<-ctx.Done()
-		log.Println("DEBUG: remove container mongo", c.Terminate(context.Background()))
+		err := c.Terminate(context.Background())
+		if err != nil {
+			log.Logger.Debug("remove container mongo", attributes.ErrorKey, err)
+		}
 	}()
 
 	containerip, err = c.ContainerIP(ctx)
@@ -65,7 +70,7 @@ func MongoContainer(ctx context.Context, wg *sync.WaitGroup) (hostport string, c
 }
 
 func MqttContainer(ctx context.Context, wg *sync.WaitGroup) (brokerAddress string, err error) {
-	log.Println("start mqtt broker")
+	log.Logger.Info("start mqtt broker")
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:           "eclipse-mosquitto:1.6.12",
@@ -83,7 +88,10 @@ func MqttContainer(ctx context.Context, wg *sync.WaitGroup) (brokerAddress strin
 		defer wg.Done()
 		<-ctx.Done()
 		timeout, _ := context.WithTimeout(context.Background(), 10*time.Second)
-		log.Println("DEBUG: remove container mqtt", c.Terminate(timeout))
+		err := c.Terminate(timeout)
+		if err != nil {
+			log.Logger.Debug("remove container mqtt", attributes.ErrorKey, err)
+		}
 	}()
 
 	port, err := c.MappedPort(ctx, "1883/tcp")

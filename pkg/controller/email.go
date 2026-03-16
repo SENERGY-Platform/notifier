@@ -21,10 +21,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	mailpit "github.com/axllent/mailpit/server/apiv1"
 )
@@ -73,6 +74,6 @@ func (this *Controller) handleEmailNotificationUpdate(token auth.Token, notifica
 	}
 	_, err := email.Send(this.config.MailpitHostPort)
 	if err != nil {
-		log.Println("ERROR: Sending Email failed: " + err.Error())
+		log.Logger.Error("sending email failed", attributes.ErrorKey, err)
 	}
 }

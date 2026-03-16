@@ -18,16 +18,18 @@ package tests
 
 import (
 	"context"
-	"github.com/SENERGY-Platform/notifier/pkg"
-	"github.com/SENERGY-Platform/notifier/pkg/configuration"
-	"github.com/SENERGY-Platform/notifier/pkg/model"
-	"github.com/SENERGY-Platform/notifier/pkg/tests/mock"
-	"github.com/golang-jwt/jwt"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/SENERGY-Platform/notifier/pkg"
+	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
+	"github.com/SENERGY-Platform/notifier/pkg/model"
+	"github.com/SENERGY-Platform/notifier/pkg/tests/mock"
+	"github.com/golang-jwt/jwt"
 )
 
 func TestInit(t *testing.T) {
@@ -83,6 +85,7 @@ type RealmAccess struct {
 }
 
 func setup() (wg *sync.WaitGroup, ctx context.Context, cancel context.CancelFunc, conf configuration.Config, err error) {
+	log.InitForTest()
 	wg = &sync.WaitGroup{}
 	ctx, cancel = context.WithCancel(context.Background())
 

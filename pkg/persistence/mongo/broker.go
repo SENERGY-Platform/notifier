@@ -19,15 +19,16 @@ package mongo
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence/vault"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"log"
-	"net/http"
-	"time"
 )
 
 var brokerUserIdKey = "user_id"
@@ -229,7 +230,7 @@ func (this *Mongo) HandlerBrokerMongoVaultConsistency(cleanupVaultKeys bool) (er
 		_, err, _ = this.ReadBroker("", id)
 		if err != nil {
 			if err == mongo.ErrNoDocuments {
-				log.Println("WARN: Vault has data for id " + id + ", but mongo entry missing")
+				log.Logger.Warn("vault has data for id, but mongo entry missing", "id", id)
 				deleteKeys = append(deleteKeys, id)
 			} else {
 				return err
@@ -237,13 +238,13 @@ func (this *Mongo) HandlerBrokerMongoVaultConsistency(cleanupVaultKeys bool) (er
 		}
 	}
 	if cleanupVaultKeys {
-		log.Println("WARN: Deleting vault keys that have no mongo entries")
+		log.Logger.Warn("deleting vault keys that have no mongo entries")
 		err = this.brokerManager.Delete(deleteKeys)
 		if err != nil {
 			return err
 		}
 	}
-	log.Println("INFO: Consistency checks took " + time.Since(start).String())
+	log.Logger.Info("consistency checks completed", "duration", time.Since(start).String())
 	return nil
 }
 
@@ -270,7 +271,7 @@ func (this *Mongo) MigrateSecretsToVault() (err error) {
 				return err
 			}
 			if vault.NeedsMigration(&element) {
-				log.Println("INFO: Migrating broker " + element.Id)
+				log.Logger.Info("migrating broker", "broker_id", element.Id)
 				err, _ = this.SetBroker(element)
 				if err != nil {
 					return err
@@ -279,6 +280,6 @@ func (this *Mongo) MigrateSecretsToVault() (err error) {
 			offset++
 		}
 	}
-	log.Println("INFO: Migration took " + time.Since(start).String())
+	log.Logger.Info("migration completed", "duration", time.Since(start).String())
 	return nil
 }

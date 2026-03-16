@@ -18,13 +18,14 @@ package controller
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
@@ -47,9 +48,10 @@ func New(config configuration.Config, db Persistence, ctx context.Context) (*Con
 	if config.PlatformMqttAddress != "" && config.PlatformMqttAddress != "-" {
 		var err error
 		publisher, err = mqtt.NewPublisher(context.Background(), config.PlatformMqttAddress, config.PlatformMqttUser,
-			config.PlatformMqttPw, config.MqttClientPrefix+uuid.NewString(), config.PlatformMqttQos, config.Debug)
+			config.PlatformMqttPw, config.MqttClientPrefix+uuid.NewString(), config.PlatformMqttQos)
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Logger.Error("unable to create platform mqtt publisher", attributes.ErrorKey, err)
+			return nil, err
 		}
 	}
 
@@ -61,11 +63,13 @@ func New(config configuration.Config, db Persistence, ctx context.Context) (*Con
 			ServiceAccountID: config.FcmIamId,
 		})
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Logger.Error("unable to initialize firebase app", attributes.ErrorKey, err)
+			return nil, err
 		}
 		firebaseClient, err = firebaseApp.Messaging(context.Background())
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Logger.Error("unable to initialize firebase messaging", attributes.ErrorKey, err)
+			return nil, err
 		}
 	}
 

@@ -19,12 +19,13 @@ package controller
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"time"
 
 	"firebase.google.com/go/v4/errorutils"
 	"firebase.google.com/go/v4/messaging"
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 )
 
@@ -45,13 +46,13 @@ func (this *Controller) DeleteFcmToken(token auth.Token, fcmToken string) (err e
 
 func (this *Controller) handleFCMNotificationUpdate(userId string, notification model.Notification) {
 	if this.firebaseClient == nil {
-		log.Println("WARNING: Skipping FCM messaging since client not configured")
+		log.Logger.Warn("skipping FCM messaging since client not configured")
 		return
 	}
 
 	tokens, err := this.getValidTokens(userId)
 	if err != nil {
-		log.Println("ERROR:", err.Error())
+		log.Logger.Error("unable to get valid FCM tokens", attributes.ErrorKey, err)
 		return
 	}
 	if tokens == nil || len(tokens) == 0 {
@@ -90,7 +91,7 @@ func (this *Controller) handleFCMNotificationUpdate(userId string, notification 
 
 	responses, err := this.firebaseClient.SendEachForMulticast(context.Background(), message)
 	if err != nil {
-		log.Println("ERROR:", err.Error())
+		log.Logger.Error("sending FCM multicast update failed", attributes.ErrorKey, err)
 		return
 	}
 	this.handleFcmResponses(responses, tokens, userId)
@@ -98,13 +99,13 @@ func (this *Controller) handleFCMNotificationUpdate(userId string, notification 
 
 func (this *Controller) handleFCMNotificationDelete(userId string, ids []string) {
 	if this.firebaseClient == nil {
-		log.Println("WARNING: Skipping FCM messaging since client not configured")
+		log.Logger.Warn("skipping FCM messaging since client not configured")
 		return
 	}
 
 	tokens, err := this.getValidTokens(userId)
 	if err != nil {
-		log.Println("ERROR:", err.Error())
+		log.Logger.Error("unable to get valid FCM tokens", attributes.ErrorKey, err)
 		return
 	}
 	if tokens == nil || len(tokens) == 0 {
@@ -121,7 +122,7 @@ func (this *Controller) handleFCMNotificationDelete(userId string, ids []string)
 		},
 	})
 	if err != nil {
-		log.Println("ERROR:", err.Error())
+		log.Logger.Error("sending FCM multicast delete failed", attributes.ErrorKey, err)
 		return
 	}
 	this.handleFcmResponses(responses, tokens, userId)
@@ -137,10 +138,10 @@ func (this *Controller) handleFcmResponses(responses *messaging.BatchResponse, t
 						UserId: userId,
 					})
 					if err != nil {
-						log.Println("ERROR: could not delete outdated token for user " + userId + ": " + err.Error())
+						log.Logger.Error("could not delete outdated FCM token", "user_id", userId, attributes.ErrorKey, err)
 					}
 				} else {
-					log.Println("ERROR: sending fcm notification ", responses.Responses[i].MessageID, responses.Responses[i].Error.Error())
+					log.Logger.Error("sending FCM notification failed", "message_id", responses.Responses[i].MessageID, attributes.ErrorKey, responses.Responses[i].Error)
 				}
 			}
 		}
@@ -158,7 +159,7 @@ func (this *Controller) getValidTokens(userId string) (tokens []string, err erro
 		if time.Now().Sub(fcmToken.UpdatedAt) > time.Hour*24*60 { // older than two months
 			err, _ = this.db.DeleteFcmToken(fcmToken)
 			if err != nil {
-				log.Println("ERROR:", err.Error())
+				log.Logger.Error("deleting outdated FCM token failed", attributes.ErrorKey, err)
 				// best effort
 			}
 		} else {

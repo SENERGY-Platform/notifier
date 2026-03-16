@@ -21,13 +21,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/SENERGY-Platform/notifier/pkg"
-	"github.com/SENERGY-Platform/notifier/pkg/configuration"
-	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"io"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/SENERGY-Platform/notifier/pkg"
+	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/model"
 )
 
 func TestBrokerCRUD(t *testing.T) {
@@ -43,7 +44,7 @@ func TestBrokerCRUD(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
+	time.Sleep(time.Second)
 	t.Run("empty list", listBrokers(conf, "user1", model.BrokerList{
 		Total:   0,
 		Limit:   10,

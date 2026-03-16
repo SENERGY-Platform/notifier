@@ -19,18 +19,19 @@ package mongo
 import (
 	"context"
 	"errors"
+	"net/http"
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence/vault"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"log"
-	"net/http"
-	"reflect"
-	"strings"
-	"time"
 )
 
 type Mongo struct {
@@ -135,7 +136,9 @@ func (this *Mongo) ensureTextIndex(collection *mongo.Collection, indexname strin
 
 func (this *Mongo) Disconnect() {
 	timeout, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	log.Println(this.client.Disconnect(timeout))
+	if err := this.client.Disconnect(timeout); err != nil {
+		log.Logger.Debug("mongo disconnect", "error", err.Error())
+	}
 }
 
 func (this *Mongo) UpsertFcmToken(token model.FcmToken) (err error, errCode int) {

@@ -19,18 +19,20 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/mqtt"
 	"github.com/google/uuid"
-	"log"
-	"net/http"
 )
 
 func (this *Controller) handleMqttNotificationUpdate(userId string, notification model.Notification) {
 	go this.handlerMqttPlatformBroker(userId, notification)
 	brokers, err := this.db.ListEnabledBrokers(userId)
 	if err != nil {
-		log.Println("ERROR:", err.Error())
+		log.Logger.Error("unable to list enabled brokers", attributes.ErrorKey, err)
 		return
 	}
 	for _, broker := range brokers {
@@ -39,9 +41,9 @@ func (this *Controller) handleMqttNotificationUpdate(userId string, notification
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			publisher, err := mqtt.NewPublisher(ctx, broker.Address, broker.User, broker.Password, this.config.MqttClientPrefix+uuid.NewString(),
-				broker.Qos, this.config.Debug)
+				broker.Qos)
 			if err != nil {
-				log.Println("ERROR:", err.Error())
+				log.Logger.Error("unable to create mqtt publisher", "broker_id", broker.Id, attributes.ErrorKey, err)
 				return
 			}
 			publishMqtt(publisher, broker.Topic, notification)
@@ -55,7 +57,7 @@ func (this *Controller) handlerMqttPlatformBroker(userId string, notification mo
 		if errCode == http.StatusNotFound {
 			return
 		}
-		log.Println("Could not publish to platform broker", err)
+		log.Logger.Error("could not publish to platform broker", attributes.ErrorKey, err)
 		return
 	}
 	if !platformBroker.Enabled {
@@ -66,17 +68,17 @@ func (this *Controller) handlerMqttPlatformBroker(userId string, notification mo
 
 func publishMqtt(publisher *mqtt.Publisher, topic string, notification model.Notification) {
 	if publisher == nil {
-		log.Println("Could not publish: publisher nil")
+		log.Logger.Warn("could not publish: publisher nil")
 		return
 	}
 	bytes, err := json.Marshal(notification)
 	if err != nil {
-		log.Println("ERROR:", err.Error())
+		log.Logger.Error("unable to marshal notification for mqtt", attributes.ErrorKey, err)
 		return
 	}
 	err = publisher.Publish(topic, string(bytes))
 	if err != nil {
-		log.Println("ERROR:", err.Error())
+		log.Logger.Error("mqtt publish failed", "topic", topic, attributes.ErrorKey, err)
 		return
 	}
 }

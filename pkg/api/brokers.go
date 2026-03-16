@@ -18,14 +18,16 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+	"strconv"
+
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
 	"github.com/gorilla/mux"
-	"log"
-	"net/http"
-	"strconv"
 )
 
 func init() {
@@ -69,7 +71,7 @@ func BrokersEndpoints(_ configuration.Config, control Controller, router *mux.Ro
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		err = json.NewEncoder(writer).Encode(result)
 		if err != nil {
-			log.Println("ERROR: unable to encode response", err)
+			log.Logger.Error("unable to encode response", attributes.ErrorKey, err)
 		}
 		return
 	}).Methods(http.MethodGet, http.MethodOptions)
@@ -115,7 +117,7 @@ func BrokersEndpoints(_ configuration.Config, control Controller, router *mux.Ro
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		err = json.NewEncoder(writer).Encode(result)
 		if err != nil {
-			log.Println("ERROR: unable to encode response", err)
+			log.Logger.Error("unable to encode response", attributes.ErrorKey, err)
 		}
 		return
 	}).Methods(http.MethodPost)
@@ -135,7 +137,7 @@ func BrokersEndpoints(_ configuration.Config, control Controller, router *mux.Ro
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		err = json.NewEncoder(writer).Encode(result)
 		if err != nil {
-			log.Println("ERROR: unable to encode response", err)
+			log.Logger.Error("unable to encode response", attributes.ErrorKey, err)
 		}
 		return
 	}).Methods(http.MethodGet, http.MethodOptions)
@@ -186,7 +188,7 @@ func BrokersEndpoints(_ configuration.Config, control Controller, router *mux.Ro
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		err = json.NewEncoder(writer).Encode(result)
 		if err != nil {
-			log.Println("ERROR: unable to encode response", err)
+			log.Logger.Error("unable to encode response", attributes.ErrorKey, err)
 		}
 		return
 	}).Methods(http.MethodPut)

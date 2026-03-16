@@ -29,5 +29,6 @@
     "fcm_project_id": "",
     "fcm_iam_id": "backend",
     "mailpit_host_port": "http://mailpit:8025",
-    "email_from": ""
+    "email_from": "",
+    "log_handler": "json"
 }

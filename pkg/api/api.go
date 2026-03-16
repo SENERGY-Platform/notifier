@@ -18,42 +18,44 @@ package api
 
 import (
 	"context"
-	"github.com/SENERGY-Platform/notifier/pkg/api/util"
-	"github.com/SENERGY-Platform/notifier/pkg/auth"
-	"github.com/SENERGY-Platform/notifier/pkg/configuration"
-	"github.com/SENERGY-Platform/notifier/pkg/model"
-	"github.com/SENERGY-Platform/notifier/pkg/persistence"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
-	"log"
 	"net/http"
 	"reflect"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
+	"github.com/SENERGY-Platform/notifier/pkg/api/util"
+	"github.com/SENERGY-Platform/notifier/pkg/auth"
+	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
+	"github.com/SENERGY-Platform/notifier/pkg/model"
+	"github.com/SENERGY-Platform/notifier/pkg/persistence"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 )
 
 var endpoints = []func(config configuration.Config, control Controller, router *mux.Router){}
 
 func Start(ctx context.Context, wg *sync.WaitGroup, config configuration.Config, control Controller) {
-	log.Println("start api")
+	log.Logger.Info("start api")
 	router := mux.NewRouter().StrictSlash(true)
 	for _, e := range endpoints {
-		log.Println("add endpoints: " + runtime.FuncForPC(reflect.ValueOf(e).Pointer()).Name())
+		log.Logger.Debug("add endpoint", "name", runtime.FuncForPC(reflect.ValueOf(e).Pointer()).Name())
 		e(config, control, router)
 	}
-	log.Println("add logging and cors")
+	log.Logger.Debug("add logging and cors")
 	router.Use(util.CorsMiddleware, util.LoggerMiddleware)
 	server := &http.Server{Addr: ":" + config.ApiPort, Handler: router, WriteTimeout: 10 * time.Second, ReadTimeout: 2 * time.Second, ReadHeaderTimeout: 2 * time.Second}
 	wg.Add(1)
 	go func() {
-		log.Println("Listening on ", server.Addr)
+		log.Logger.Info("listening", "addr", server.Addr)
 		if err := server.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
-				log.Println("ERROR: api server error", err)
-				log.Fatal(err)
+				log.Logger.Error("api server error", attributes.ErrorKey, err)
+				panic(err)
 			} else {
-				log.Println("closing api server")
+				log.Logger.Info("closing api server")
 			}
 			wg.Done()
 		}
@@ -61,7 +63,10 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config configuration.Config,
 
 	go func() {
 		<-ctx.Done()
-		log.Println("DEBUG: api shutdown", server.Shutdown(context.Background()))
+		err := server.Shutdown(context.Background())
+		if err != nil {
+			log.Logger.Debug("api shutdown", attributes.ErrorKey, err)
+		}
 	}()
 }
 

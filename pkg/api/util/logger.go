@@ -18,10 +18,11 @@ package util
 
 import (
 	"bufio"
-	"log"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 )
 
 func LoggerMiddleware(next http.Handler) http.Handler {
@@ -37,7 +38,7 @@ func l(request *http.Request, response *ResponseWriterWithStatusCodeLog, t time.
 	method := request.Method
 	path := request.URL
 	status := response.Status
-	log.Printf("[%v] %v %v %v\n", method, path, status, time.Since(t))
+	log.Logger.Info("http request", "method", method, "path", path.String(), "status", status, "duration", time.Since(t).String())
 }
 
 type ResponseWriterWithStatusCodeLog struct {

@@ -18,10 +18,11 @@ package mongo
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"time"
 
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/persistence"
 	"go.mongodb.org/mongo-driver/bson"
@@ -44,12 +45,14 @@ func initNotifications() {
 	var err error
 	notificationTitleKey, err = getBsonFieldPath(model.Notification{}, notificationTitleFieldName)
 	if err != nil {
-		log.Fatal(err)
+		log.Logger.Error("unable to resolve notification title key", attributes.ErrorKey, err)
+		panic(err)
 	}
 
 	notificationCreatedAtKey, err = getBsonFieldName(model.Notification{}, deviceCreatedAtFieldName)
 	if err != nil {
-		log.Fatal(err)
+		log.Logger.Error("unable to resolve notification created-at key", attributes.ErrorKey, err)
+		panic(err)
 	}
 
 	CreateCollections = append(CreateCollections, func(db *Mongo) error {

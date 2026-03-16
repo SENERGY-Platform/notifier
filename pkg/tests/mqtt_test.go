@@ -47,12 +47,13 @@ func TestMQTT(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
+	time.Sleep(time.Second)
 	_, err = setPlatformBroker(conf, "user1", model.PlatformBroker{
 		Enabled: true,
 	})
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	topic1, topic2, topic3 := "topic1", "topic2", "topic3"
 
@@ -86,7 +87,7 @@ func TestMQTT(t *testing.T) {
 
 	msgsU1, msgsU2, msgs1, msgs2, msgs3 := []string{}, []string{}, []string{}, []string{}, []string{}
 	publisher, err := mqtt.NewPublisher(ctx, conf.PlatformMqttAddress, conf.PlatformMqttUser,
-		conf.PlatformMqttPw, "notifier-test-"+uuid.NewString(), conf.PlatformMqttQos, conf.Debug)
+		conf.PlatformMqttPw, "notifier-test-"+uuid.NewString(), conf.PlatformMqttQos)
 	if err != nil {
 		t.Error(err)
 	}

@@ -1,8 +1,6 @@
 module github.com/SENERGY-Platform/notifier
 
-go 1.23
-
-toolchain go1.23.4
+go 1.25.0
 
 require (
 	firebase.google.com/go/v4 v4.13.0
@@ -32,6 +30,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/Microsoft/hcsshim v0.11.4 // indirect
 	github.com/PuerkitoBio/goquery v1.10.0 // indirect
+	github.com/SENERGY-Platform/go-service-base/struct-logger v0.6.0
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
 	github.com/axllent/semver v0.0.1 // indirect

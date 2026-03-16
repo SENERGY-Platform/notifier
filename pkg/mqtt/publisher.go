@@ -19,22 +19,23 @@ package mqtt
 import (
 	"context"
 	"errors"
-	paho "github.com/eclipse/paho.mqtt.golang"
-	"log"
 	"strings"
+
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
+	paho "github.com/eclipse/paho.mqtt.golang"
 )
 
 type Publisher struct {
 	client paho.Client
 	qos    byte
-	debug  bool
 }
 
-func NewPublisher(ctx context.Context, broker string, user string, pw string, client string, qos uint8, debug bool) (mqtt *Publisher, err error) {
+func NewPublisher(ctx context.Context, broker string, user string, pw string, client string, qos uint8) (mqtt *Publisher, err error) {
 	if strings.Index(broker, ":") == -1 {
 		broker += ":1883"
 	}
-	mqtt = &Publisher{debug: debug, qos: qos}
+	mqtt = &Publisher{qos: qos}
 	options := paho.NewClientOptions().
 		SetPassword(pw).
 		SetUsername(user).
@@ -45,10 +46,10 @@ func NewPublisher(ctx context.Context, broker string, user string, pw string, cl
 
 	mqtt.client = paho.NewClient(options)
 	if token := mqtt.client.Connect(); token.Wait() && token.Error() != nil {
-		log.Println("Error on Publisher.Connect(): ", broker, user, pw, client, token.Error())
+		log.Logger.Error("publisher connect failed", "broker", broker, "user", user, "client", client, attributes.ErrorKey, token.Error())
 		return mqtt, token.Error()
 	}
-	log.Println("MQTT publisher up and running...")
+	log.Logger.Info("mqtt publisher up and running")
 	go func() {
 		<-ctx.Done()
 		mqtt.client.Disconnect(0)
@@ -63,9 +64,7 @@ func (this *Publisher) Publish(topic string, msg string) (err error) {
 	}
 
 	token := this.client.Publish(topic, this.qos, false, msg)
-	if this.debug {
-		log.Printf("Publish Mqtt on topic %v: %v", topic, msg)
-	}
+		log.Logger.Debug("publish mqtt", "topic", topic, "message", msg)
 	if token.Wait() && token.Error() != nil {
 		return token.Error()
 	}

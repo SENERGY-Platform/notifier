@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/SENERGY-Platform/notifier/pkg/configuration"
-	"github.com/SENERGY-Platform/vault-jwt-go/vault/vaultjwt"
-	"github.com/gorilla/mux"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"runtime/debug"
 	"time"
+
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
+	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
+	"github.com/SENERGY-Platform/vault-jwt-go/vault/vaultjwt"
+	"github.com/gorilla/mux"
 )
 
 func MockKeycloak(config *configuration.Config, ctx context.Context) (err error) {
@@ -32,7 +34,7 @@ func MockKeycloak(config *configuration.Config, ctx context.Context) (err error)
 func getKeycloakRouter() (router *mux.Router, err error) {
 	defer func() {
 		if r := recover(); r != nil && err == nil {
-			log.Printf("%s: %s", r, debug.Stack())
+			log.Logger.Error("panic in keycloak mock router", "panic", fmt.Sprint(r), "stack", string(debug.Stack()))
 			err = errors.New(fmt.Sprint("Recovered Error: ", r))
 		}
 	}()
@@ -49,7 +51,7 @@ func getKeycloakRouter() (router *mux.Router, err error) {
 			RequestTime:      time.Now(),
 		})
 		if err != nil {
-			log.Println("ERROR: unable to encode response", err)
+			log.Logger.Error("unable to encode response", attributes.ErrorKey, err)
 		}
 	}).Methods(http.MethodPost)
 

@@ -20,14 +20,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/SENERGY-Platform/notifier/pkg/auth"
-	"github.com/SENERGY-Platform/notifier/pkg/model"
-	"github.com/SENERGY-Platform/notifier/pkg/persistence"
-	"github.com/gorilla/websocket"
-	"log"
 	"runtime/debug"
 	"sync"
 	"time"
+
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
+	"github.com/SENERGY-Platform/notifier/pkg/auth"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
+	"github.com/SENERGY-Platform/notifier/pkg/model"
+	"github.com/SENERGY-Platform/notifier/pkg/persistence"
+	"github.com/gorilla/websocket"
 )
 
 type WsSession struct {
@@ -50,13 +52,13 @@ func (this *Controller) HandleWs(conn *websocket.Conn) {
 	defer func() {
 		err := this.removeSession(&session, true)
 		if err != nil {
-			log.Println("ERROR: Controller.removeSession", err)
+			log.Logger.Error("controller removeSession failed", attributes.ErrorKey, err)
 		}
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	err := this.startPing(ctx, &session)
 	if err != nil {
-		log.Println("ERROR:", err)
+		log.Logger.Error("start ws ping failed", attributes.ErrorKey, err)
 		debug.PrintStack()
 		cancel()
 		return
@@ -71,7 +73,7 @@ func (this *Controller) HandleWs(conn *websocket.Conn) {
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					return
 				} else {
-					log.Println("Unexpected error", session.id, err.Error())
+					log.Logger.Error("unexpected websocket error", "session_id", session.id, attributes.ErrorKey, err)
 					return
 				}
 			}
@@ -81,7 +83,7 @@ func (this *Controller) HandleWs(conn *websocket.Conn) {
 			err = json.Unmarshal(bytes, &msg)
 			if err != nil {
 				if this.config.Debug {
-					log.Println("DEBUG: ignore client ws message of unknown structure")
+					log.Logger.Debug("ignore client ws message of unknown structure")
 				}
 				continue
 			}
@@ -90,18 +92,18 @@ func (this *Controller) HandleWs(conn *websocket.Conn) {
 			case model.WsAuthType:
 				err = this.handleWsAuth(&session, msg)
 				if err != nil {
-					log.Println("ERROR: handleWsAuth:", err)
+					log.Logger.Error("handleWsAuth failed", attributes.ErrorKey, err)
 					return
 				}
 			case model.WsRefreshType:
 				err = this.handleWsRefresh(&session)
 				if err != nil {
-					log.Println("ERROR: handleWsRefresh:", err)
+					log.Logger.Error("handleWsRefresh failed", attributes.ErrorKey, err)
 					return
 				}
 			default:
 				if this.config.Debug {
-					log.Println("DEBUG: ignore client ws message", msg)
+					log.Logger.Debug("ignore client ws message", "message", msg)
 				}
 			}
 		}
@@ -155,13 +157,13 @@ func (this *Controller) handleWsNotificationUpdate(userId string, notification m
 			if sessions[i].token == nil || sessions[i].token.IsExpired() {
 				err := this.wsSendAuthRequest(sessions[i])
 				if err != nil {
-					log.Println("ERROR: unable to send auth request", err)
+					log.Logger.Error("unable to send auth request", attributes.ErrorKey, err)
 				}
 				return
 			}
 			err := this.wsSend(sessions[i], model.WsUpdateSetType, notification)
 			if err != nil {
-				log.Println("ERROR: unable to notify session", sessions[i].id)
+				log.Logger.Error("unable to notify session", "session_id", sessions[i].id, attributes.ErrorKey, err)
 			}
 		}()
 	}
@@ -178,14 +180,14 @@ func (this *Controller) handleWsNotificationDelete(userId string, ids []string) 
 			if sessions[i].token == nil || sessions[i].token.IsExpired() {
 				err := this.wsSendAuthRequest(sessions[i])
 				if err != nil {
-					log.Println("ERROR: unable to send auth request", err)
+					log.Logger.Error("unable to send auth request", attributes.ErrorKey, err)
 				}
 				return
 			}
 			for _, id := range ids {
 				err := this.wsSend(sessions[i], model.WsUpdateDeleteType, id)
 				if err != nil {
-					log.Println("ERROR: unable to notify session", sessions[i].id)
+					log.Logger.Error("unable to notify session", "session_id", sessions[i].id, attributes.ErrorKey, err)
 				}
 			}
 		}()
@@ -257,7 +259,7 @@ func (this *Controller) startPing(ctx context.Context, session *WsSession) (err 
 				err := session.conn.WriteMessage(websocket.PingMessage, nil)
 				session.mutex.Unlock()
 				if err != nil {
-					log.Println("ERROR: sending ws ping:", err)
+					log.Logger.Error("sending ws ping failed", attributes.ErrorKey, err)
 					return
 				}
 			}

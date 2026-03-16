@@ -20,12 +20,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 )
 
 type KeycloakUser struct {
@@ -66,13 +67,13 @@ func (c *Controller) updateClientToken() (err error) {
 	})
 
 	if err != nil {
-		log.Println("ERROR: updateClientToken::PostForm()", err)
+		log.Logger.Error("updateClientToken PostForm failed", attributes.ErrorKey, err)
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		log.Println("ERROR: updateClientToken()", resp.StatusCode, string(body))
+		log.Logger.Error("updateClientToken returned non-OK response", "status_code", resp.StatusCode, "response_body", string(body))
 		err = errors.New(string(body))
 		return
 	}
@@ -92,31 +93,31 @@ func (c *Controller) updateClientToken() (err error) {
 func (c *Controller) createInternalUserToken(userid string) (token *auth.Token, err error) {
 	err = c.updateClientToken()
 	if err != nil {
-		log.Println("ERROR: createInternalUserToken::updateClientToken()", err)
+		log.Logger.Error("createInternalUserToken updateClientToken failed", attributes.ErrorKey, err)
 		return nil, err
 	}
 	req, err := http.NewRequest(http.MethodGet, c.config.KeycloakUrl+"/auth/admin/realms/"+c.config.KeycloakRealm+"/users/"+userid, nil)
 	if err != nil {
-		log.Println("ERROR: createInternalUserToken::NewRequest", err)
+		log.Logger.Error("createInternalUserToken NewRequest failed", attributes.ErrorKey, err)
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.clientToken.AccessToken)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Println("ERROR: createInternalUserToken::Do", err)
+		log.Logger.Error("createInternalUserToken request failed", attributes.ErrorKey, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		log.Println("ERROR: getOpenidToken()", resp.StatusCode, string(body))
+		log.Logger.Error("getOpenidToken returned non-OK response", "status_code", resp.StatusCode, "response_body", string(body))
 		err = errors.New(string(body))
 		return
 	}
 	var user KeycloakUser
 	err = json.NewDecoder(resp.Body).Decode(&user)
 	if err != nil {
-		log.Println("ERROR: createInternalUserToken", err)
+		log.Logger.Error("createInternalUserToken decode failed", attributes.ErrorKey, err)
 		return nil, err
 	}
 	return &auth.Token{

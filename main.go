@@ -19,13 +19,16 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/SENERGY-Platform/notifier/pkg"
-	"github.com/SENERGY-Platform/notifier/pkg/configuration"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
+	"github.com/SENERGY-Platform/notifier/pkg"
+	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	_log "github.com/SENERGY-Platform/notifier/pkg/log"
 )
 
 func main() {
@@ -37,18 +40,21 @@ func main() {
 		log.Fatal("ERROR: unable to load config", err)
 	}
 
+	_log.Init(conf)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 
 	err = pkg.Start(ctx, wg, conf)
 	if err != nil {
-		log.Fatal(err)
+		_log.Logger.Error("unable to start notifier", attributes.ErrorKey, err)
+		os.Exit(1)
 	}
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	sig := <-shutdown
-	log.Println("received shutdown signal", sig)
+	_log.Logger.Info("received shutdown signal", "signal", sig.String())
 	cancel()
 	wg.Wait() //wait for clean disconnects
 }

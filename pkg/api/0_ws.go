@@ -17,11 +17,13 @@
 package api
 
 import (
+	"net/http"
+
+	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
 	"github.com/SENERGY-Platform/notifier/pkg/configuration"
+	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"log"
-	"net/http"
 )
 
 func init() {
@@ -40,7 +42,7 @@ func WsEndpoints(_ configuration.Config, control Controller, router *mux.Router)
 	router.HandleFunc(resource, func(writer http.ResponseWriter, request *http.Request) {
 		c, err := upgrader.Upgrade(writer, request, nil)
 		if err != nil {
-			log.Print("ERROR:", err)
+			log.Logger.Error("websocket upgrade failed", attributes.ErrorKey, err)
 			return
 		}
 		defer c.Close()
