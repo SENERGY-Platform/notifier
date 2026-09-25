@@ -98,8 +98,7 @@ func setup() (wg *sync.WaitGroup, ctx context.Context, cancel context.CancelFunc
 	if err != nil {
 		return
 	}
-	conf.MongoAddr = "localhost"
-	conf.MongoPort = mongoPort
+	conf.MongoUrl = "mongodb://localhost:" + mongoPort
 
 	freePort, err := getFreePort()
 	if err != nil {

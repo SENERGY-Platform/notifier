@@ -1,8 +1,10 @@
 {
     "api_port": "5000",
-    "mongo_addr": "localhost",
-    "mongo_port": "27017",
-    "mongo_table": "db",
+    "mongo_url": "mongodb://localhost:27017",
+    "mongo_user": "",
+    "mongo_password": "",
+    "mongo_auth_source": "admin",
+    "mongo_database": "notifier",
     "mongo_notification_collection": "notifications",
     "mongo_broker_collection": "brokers",
     "mongo_platformbroker_collection": "platformbroker",

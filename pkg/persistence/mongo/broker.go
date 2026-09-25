@@ -39,7 +39,7 @@ func initBrokers() {
 	var err error
 
 	CreateCollections = append(CreateCollections, func(db *Mongo) error {
-		collection := db.client.Database(db.config.MongoTable).Collection(db.config.MongoBrokerCollection)
+		collection := db.client.Database(db.config.MongoDatabase).Collection(db.config.MongoBrokerCollection)
 		err = db.ensureIndex(collection, "brokeruseridindex", brokerUserIdKey, true, false)
 		if err != nil {
 			return err
@@ -53,7 +53,7 @@ func initBrokers() {
 }
 
 func (this *Mongo) brokerCollection() *mongo.Collection {
-	return this.client.Database(this.config.MongoTable).Collection(this.config.MongoBrokerCollection)
+	return this.client.Database(this.config.MongoDatabase).Collection(this.config.MongoBrokerCollection)
 }
 
 func (this *Mongo) ListBrokers(userId string, o persistence.ListOptions) (result []model.Broker, total int64, err error, errCode int) {

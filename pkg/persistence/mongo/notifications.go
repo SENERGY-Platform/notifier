@@ -56,7 +56,7 @@ func initNotifications() {
 	}
 
 	CreateCollections = append(CreateCollections, func(db *Mongo) error {
-		collection := db.client.Database(db.config.MongoTable).Collection(db.config.MongoNotificationCollection)
+		collection := db.client.Database(db.config.MongoDatabase).Collection(db.config.MongoNotificationCollection)
 		err = db.ensureIndex(collection, "notificationtitleindex", notificationTitleKey, true, false)
 		if err != nil {
 			return err
@@ -74,7 +74,7 @@ func initNotifications() {
 }
 
 func (this *Mongo) notificationCollection() *mongo.Collection {
-	return this.client.Database(this.config.MongoTable).Collection(this.config.MongoNotificationCollection)
+	return this.client.Database(this.config.MongoDatabase).Collection(this.config.MongoNotificationCollection)
 }
 
 func (this *Mongo) ListNotifications(userId string, o persistence.ListOptions, topics []model.Topic) (result []model.Notification, total int64, err error, errCode int) {

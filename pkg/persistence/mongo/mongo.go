@@ -19,6 +19,7 @@ package mongo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -43,49 +44,106 @@ type Mongo struct {
 
 var CreateCollections = []func(db *Mongo) error{}
 
+const startupTimeout = 10 * time.Second
+
+var (
+	errEmptyDatabase   = errors.New("mongo database name must not be empty")
+	errMissingPassword = errors.New("mongo password must not be empty when a mongo user is set")
+)
+
 func New(conf configuration.Config) (*Mongo, error) {
-	//ctx, _ := getTimeoutContext()
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI("mongodb://"+conf.MongoAddr+":"+conf.MongoPort))
-	if err != nil {
+	if err := validateConfig(conf); err != nil {
 		return nil, err
 	}
-	manager, err := vault.New(conf)
-	if err != nil {
-		return nil, err
-	}
+	return start(conf, clientOptions(conf), startupTimeout)
+}
 
-	fcmTokenManager, err := vault.NewFcmTokenManager(conf)
+// start disconnects the client on every failure path, so a failed startup leaves nothing connected.
+func start(conf configuration.Config, opts *options.ClientOptions, timeout time.Duration) (*Mongo, error) {
+	client, err := connect(context.Background(), opts, conf.MongoDatabase, timeout)
 	if err != nil {
 		return nil, err
 	}
+	db := &Mongo{config: conf, client: client}
+	if err = db.init(); err != nil {
+		db.Disconnect()
+		return nil, err
+	}
+	return db, nil
+}
 
-	db := &Mongo{config: conf, client: client, brokerManager: manager, fcmTokenManager: fcmTokenManager}
+func (this *Mongo) init() (err error) {
+	this.brokerManager, err = vault.New(this.config)
+	if err != nil {
+		return err
+	}
+	this.fcmTokenManager, err = vault.NewFcmTokenManager(this.config)
+	if err != nil {
+		return err
+	}
 	initNotifications()
 	initBrokers()
 	initPlatformBrokers()
 	initSettings()
 	for _, creators := range CreateCollections {
-		err = creators(db)
+		err = creators(this)
 		if err != nil {
-			client.Disconnect(context.Background())
-			return nil, err
+			return err
 		}
 	}
-	if conf.VaultEnsureMigration {
-		err = db.MigrateSecretsToVault()
+	if this.config.VaultEnsureMigration {
+		err = this.MigrateSecretsToVault()
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	err = db.HandlerBrokerMongoVaultConsistency(conf.VaultCleanupKeys)
+	err = this.HandlerBrokerMongoVaultConsistency(this.config.VaultCleanupKeys)
+	if err != nil {
+		return err
+	}
+	return this.migrateHash()
+}
+
+// connect runs listCollections on the service's database because Connect is lazy and ping needs no
+// authentication; unreachable servers and wrong or missing credentials then fail at startup.
+func connect(ctx context.Context, opts *options.ClientOptions, database string, timeout time.Duration) (*mongo.Client, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	err = db.migrateHash()
-	if err != nil {
-		return nil, err
+	listOpts := options.ListCollections().SetNameOnly(true).SetAuthorizedCollections(true)
+	if _, err = client.Database(database).ListCollectionNames(ctx, bson.D{}, listOpts); err != nil {
+		disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), timeout)
+		defer disconnectCancel()
+		_ = client.Disconnect(disconnectCtx)
+		return nil, fmt.Errorf("mongo startup check failed: %w", err)
 	}
-	return db, nil
+	return client, nil
+}
+
+func validateConfig(conf configuration.Config) error {
+	if conf.MongoDatabase == "" {
+		return errEmptyDatabase
+	}
+	if conf.MongoUser != "" && conf.MongoPassword == "" {
+		return errMissingPassword
+	}
+	return nil
+}
+
+// clientOptions applies the credentials after the URI so they replace any given in MONGO_URL.
+func clientOptions(conf configuration.Config) *options.ClientOptions {
+	opts := options.Client().ApplyURI(conf.MongoUrl)
+	if conf.MongoUser != "" {
+		opts.SetAuth(options.Credential{
+			Username:   conf.MongoUser,
+			Password:   conf.MongoPassword,
+			AuthSource: conf.MongoAuthSource,
+		})
+	}
+	return opts
 }
 
 func (this *Mongo) ensureIndex(collection *mongo.Collection, indexname string, indexKey string, asc bool, unique bool) error {
@@ -135,8 +193,9 @@ func (this *Mongo) ensureTextIndex(collection *mongo.Collection, indexname strin
 }
 
 func (this *Mongo) Disconnect() {
-	timeout, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	if err := this.client.Disconnect(timeout); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := this.client.Disconnect(ctx); err != nil {
 		log.Logger.Debug("mongo disconnect", "error", err.Error())
 	}
 }

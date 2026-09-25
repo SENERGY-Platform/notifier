@@ -28,13 +28,13 @@ var settingsUserIdKey = "user_id"
 
 func initSettings() {
 	CreateCollections = append(CreateCollections, func(db *Mongo) error {
-		collection := db.client.Database(db.config.MongoTable).Collection(db.config.MongoSettingsCollection)
+		collection := db.client.Database(db.config.MongoDatabase).Collection(db.config.MongoSettingsCollection)
 		return db.ensureIndex(collection, "settingsuseridindex", settingsUserIdKey, true, true)
 	})
 }
 
 func (this *Mongo) settingsCollection() *mongo.Collection {
-	return this.client.Database(this.config.MongoTable).Collection(this.config.MongoSettingsCollection)
+	return this.client.Database(this.config.MongoDatabase).Collection(this.config.MongoSettingsCollection)
 }
 
 func (this *Mongo) ReadSettings(userId string) (result model.Settings, err error, errCode int) {

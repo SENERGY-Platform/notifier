@@ -28,13 +28,13 @@ var platformBrokerUserIdKey = "user_id"
 
 func initPlatformBrokers() {
 	CreateCollections = append(CreateCollections, func(db *Mongo) error {
-		collection := db.client.Database(db.config.MongoTable).Collection(db.config.MongoPlatformBrokerCollection)
+		collection := db.client.Database(db.config.MongoDatabase).Collection(db.config.MongoPlatformBrokerCollection)
 		return db.ensureIndex(collection, "platformbrokeruseridindex", platformBrokerUserIdKey, true, true)
 	})
 }
 
 func (this *Mongo) platformBrokerCollection() *mongo.Collection {
-	return this.client.Database(this.config.MongoTable).Collection(this.config.MongoPlatformBrokerCollection)
+	return this.client.Database(this.config.MongoDatabase).Collection(this.config.MongoPlatformBrokerCollection)
 }
 
 func (this *Mongo) ReadPlatformBroker(userId string) (result model.PlatformBroker, err error, errCode int) {

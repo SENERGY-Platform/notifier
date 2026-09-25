@@ -22,6 +22,7 @@ import (
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/gorilla/websocket"
+	"net/http"
 	"reflect"
 	"sync"
 	"testing"
@@ -125,6 +126,8 @@ func TestWebSocket(t *testing.T) {
 		return time.Now().Add(10 * time.Hour)
 	}
 
+	// The sleeps since the last request add up to the server's 2s idle timeout, so the kept-alive connection may be closing.
+	http.DefaultClient.CloseIdleConnections()
 	_, err = createNotification(conf, userId, model.Notification{
 		UserId:  userId,
 		Title:   "test",

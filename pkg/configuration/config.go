@@ -29,9 +29,11 @@ import (
 
 type Config struct {
 	ApiPort                       string `json:"api_port"`
-	MongoAddr                     string `json:"mongo_addr"`
-	MongoPort                     string `json:"mongo_port"`
-	MongoTable                    string `json:"mongo_table"`
+	MongoUrl                      string `json:"mongo_url"`
+	MongoUser                     string `json:"mongo_user"`
+	MongoPassword                 string `json:"mongo_password" config:"secret"`
+	MongoAuthSource               string `json:"mongo_auth_source"`
+	MongoDatabase                 string `json:"mongo_database"`
 	MongoNotificationCollection   string `json:"mongo_notification_collection"`
 	MongoBrokerCollection         string `json:"mongo_broker_collection"`
 	MongoPlatformBrokerCollection string `json:"mongo_platformbroker_collection"`
@@ -73,6 +75,11 @@ func Load(location string) (config Config, err error) {
 		log.Println("error on config load: ", err)
 		return config, err
 	}
+	config = Config{
+		MongoUrl:        "mongodb://localhost:27017",
+		MongoAuthSource: "admin",
+		MongoDatabase:   "notifier",
+	}
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&config)
 	if err != nil {
@@ -81,6 +88,36 @@ func Load(location string) (config Config, err error) {
 	}
 	handleEnvironmentVars(&config)
 	return config, nil
+}
+
+func isSecret(field reflect.StructField) bool {
+	return strings.Contains(field.Tag.Get("config"), "secret")
+}
+
+// plainConfig has none of Config's methods, so formatting it does not recurse.
+type plainConfig Config
+
+// masked returns a copy in which every non-empty field tagged config:"secret" is replaced.
+func (c Config) masked() plainConfig {
+	v := reflect.ValueOf(&c).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		if isSecret(v.Type().Field(i)) && v.Field(i).Kind() == reflect.String && v.Field(i).String() != "" {
+			v.Field(i).SetString("***")
+		}
+	}
+	return plainConfig(c)
+}
+
+func (c Config) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.masked())
+}
+
+func (c Config) String() string {
+	return fmt.Sprintf("%+v", c.masked())
+}
+
+func (c Config) GoString() string {
+	return fmt.Sprintf("%#v", c.masked())
 }
 
 var camel = regexp.MustCompile("(^[^A-Z]*|[A-Z]*)([A-Z][^A-Z]+|$)")
@@ -107,7 +144,9 @@ func handleEnvironmentVars(config *Config) {
 		envName := fieldNameToEnvName(fieldName)
 		envValue := os.Getenv(envName)
 		if envValue != "" {
-			fmt.Println("use environment variable: ", envName, " = ", envValue)
+			if !isSecret(configType.Field(index)) {
+				fmt.Println("use environment variable: ", envName, " = ", envValue)
+			}
 			if configValue.FieldByName(fieldName).Kind() == reflect.Int64 {
 				i, _ := strconv.ParseInt(envValue, 10, 64)
 				configValue.FieldByName(fieldName).SetInt(i)
