@@ -43,7 +43,7 @@ type Config struct {
 	WsPingPeriod                  string `json:"ws_ping_period"`
 	PlatformMqttAddress           string `json:"platform_mqtt_address"`
 	PlatformMqttUser              string `json:"platform_mqtt_user"`
-	PlatformMqttPw                string `json:"platform_mqtt_pw"`
+	PlatformMqttPw                string `json:"platform_mqtt_pw" config:"secret"`
 	PlatformMqttQos               uint8  `json:"platform_mqtt_qos"`
 	PlatformMqttBasetopic         string `json:"platform_mqtt_basetopic"`
 	MqttClientPrefix              string `json:"mqtt_client_prefix"`
@@ -51,7 +51,7 @@ type Config struct {
 	KeycloakUrl          string `json:"keycloak_url"`
 	KeycloakRealm        string `json:"keycloak_realm"`
 	KeycloakClientId     string `json:"keycloak_client_id"`
-	KeycloakClientSecret string `json:"keycloak_client_secret"`
+	KeycloakClientSecret string `json:"keycloak_client_secret" config:"secret"`
 	VaultUrl             string `json:"vault_url"`
 	VaultRole            string `json:"vault_role"`
 	VaultEngineBroker    string `json:"vault_engine_broker"`

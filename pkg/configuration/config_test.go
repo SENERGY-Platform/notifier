@@ -206,6 +206,45 @@ func TestConfigFormattingMasksMongoPassword(t *testing.T) {
 	}
 }
 
+func TestConfigFormattingMasksKeycloakSecretAndMqttPw(t *testing.T) {
+	t.Setenv("KEYCLOAK_CLIENT_SECRET", "s3cr3t-client")
+	t.Setenv("PLATFORM_MQTT_PW", "s3cr3t-mqtt")
+	var cfg Config
+	captureStdout(t, func() {
+		var err error
+		if cfg, err = Load(repoConfig); err != nil {
+			t.Error(err)
+		}
+	})
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outputs := map[string]string{
+		"json": string(b),
+		"%v":   fmt.Sprintf("%v", cfg),
+		"%+v":  fmt.Sprintf("%+v", cfg),
+		"%#v":  fmt.Sprintf("%#v", cfg),
+	}
+	for name, s := range outputs {
+		if strings.Contains(s, "s3cr3t-client") {
+			t.Errorf("%s leaks the keycloak client secret: %s", name, s)
+		}
+		if strings.Contains(s, "s3cr3t-mqtt") {
+			t.Errorf("%s leaks the platform mqtt password: %s", name, s)
+		}
+	}
+	if !strings.Contains(string(b), `"keycloak_client_secret":"***"`) {
+		t.Errorf("json does not show the keycloak client secret as masked: %s", b)
+	}
+	if !strings.Contains(string(b), `"platform_mqtt_pw":"***"`) {
+		t.Errorf("json does not show the platform mqtt password as masked: %s", b)
+	}
+	if cfg.KeycloakClientSecret != "s3cr3t-client" || cfg.PlatformMqttPw != "s3cr3t-mqtt" {
+		t.Errorf("masking changed the loaded values: keycloak=%q mqtt=%q", cfg.KeycloakClientSecret, cfg.PlatformMqttPw)
+	}
+}
+
 func TestConfigFormattingKeepsEmptyPasswordEmpty(t *testing.T) {
 	b, err := json.Marshal(Config{MongoUser: "notifier"})
 	if err != nil {
