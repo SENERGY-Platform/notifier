@@ -27,7 +27,6 @@ import (
 	"github.com/SENERGY-Platform/notifier/pkg/auth"
 	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
-	mailpit "github.com/axllent/mailpit/server/apiv1"
 )
 
 type FromTo = struct {
@@ -35,7 +34,13 @@ type FromTo = struct {
 	Email string
 }
 
-type SendRequest mailpit.SendRequest
+// SendRequest mirrors the body of mailpit's POST /api/v1/send; mailpit no longer exports the type.
+type SendRequest struct {
+	From    FromTo
+	To      []FromTo
+	Subject string
+	Text    string
+}
 
 func (s *SendRequest) Send(remoteAddress string) (messageId string, err error) {
 	body, err := json.Marshal(s)
