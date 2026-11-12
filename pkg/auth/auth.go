@@ -20,8 +20,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
-	"fmt"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"strings"
 	"time"
@@ -63,12 +62,28 @@ func (this *Token) Valid() error {
 	return nil
 }
 
+// tokenClaims adapts Token to jwt.Claims without changing Token's exported API.
+// The time getters return nil, so the library checks no exp/nbf/iat: expiry is checked by callers
+// through IsExpired, and Validate keeps the only check the previous library version ran.
+type tokenClaims Token
+
+func (this *tokenClaims) GetExpirationTime() (*jwt.NumericDate, error) { return nil, nil }
+func (this *tokenClaims) GetIssuedAt() (*jwt.NumericDate, error)       { return nil, nil }
+func (this *tokenClaims) GetNotBefore() (*jwt.NumericDate, error)      { return nil, nil }
+func (this *tokenClaims) GetIssuer() (string, error)                   { return "", nil }
+func (this *tokenClaims) GetSubject() (string, error)                  { return this.Sub, nil }
+func (this *tokenClaims) GetAudience() (jwt.ClaimStrings, error)       { return nil, nil }
+
+func (this *tokenClaims) Validate() error {
+	return (*Token)(this).Valid()
+}
+
 func Parse(token string) (claims Token, err error) {
 	orig := token
 	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
 		token = token[7:]
 	}
-	_, _, err = new(jwt.Parser).ParseUnverified(token, &claims)
+	_, _, err = jwt.NewParser().ParseUnverified(token, (*tokenClaims)(&claims))
 	if err == nil {
 		claims.Token = orig
 	}
@@ -80,12 +95,7 @@ func ParseAndValidateToken(token string, pubRsaKey string) (claims Token, err er
 	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
 		token = token[7:]
 	}
-	_, err = jwt.ParseWithClaims(token, &claims, func(token *jwt.Token) (interface{}, error) {
-		// Don't forget to validate the alg is what you expect:
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
+	_, err = jwt.ParseWithClaims(token, (*tokenClaims)(&claims), func(token *jwt.Token) (interface{}, error) {
 		//decode key base64 string to []byte
 		b, err := base64.StdEncoding.DecodeString(pubRsaKey)
 		if err != nil {
@@ -93,7 +103,7 @@ func ParseAndValidateToken(token string, pubRsaKey string) (claims Token, err er
 		}
 		//parse []byte key to go struct key (use most common encoding)
 		return x509.ParsePKIXPublicKey(b)
-	})
+	}, jwt.WithValidMethods([]string{"RS256", "RS384", "RS512"})) // the configured key is an RSA public key
 	if err == nil {
 		claims.Token = orig
 	}

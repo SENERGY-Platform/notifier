@@ -29,7 +29,7 @@ import (
 	"github.com/SENERGY-Platform/notifier/pkg/log"
 	"github.com/SENERGY-Platform/notifier/pkg/model"
 	"github.com/SENERGY-Platform/notifier/pkg/tests/mock"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func TestInit(t *testing.T) {
@@ -58,8 +58,8 @@ func TestInit(t *testing.T) {
 func createToken(userId string) (token string, err error) {
 	claims := KeycloakClaims{
 		RealmAccess{Roles: []string{}},
-		jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Duration(10 * time.Minute)).Unix(),
+		jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(10 * time.Minute))),
 			Issuer:    "test",
 			Subject:   userId,
 		},
@@ -77,7 +77,7 @@ func createToken(userId string) (token string, err error) {
 
 type KeycloakClaims struct {
 	RealmAccess RealmAccess `json:"realm_access"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 type RealmAccess struct {
