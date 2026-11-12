@@ -21,7 +21,9 @@ import (
 	"encoding/json"
 	"errors"
 	"runtime/debug"
+	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/SENERGY-Platform/go-service-base/struct-logger/attributes"
@@ -33,8 +35,9 @@ import (
 )
 
 type WsSession struct {
-	conn  *websocket.Conn
-	token *auth.Token
+	conn *websocket.Conn
+	// token is written by the session's read loop and read by notification goroutines.
+	token atomic.Pointer[auth.Token]
 	id    string
 	mutex sync.Mutex
 }
@@ -125,36 +128,59 @@ func (this *Controller) wsSendAuthRequest(session *WsSession) error {
 }
 
 func (this *Controller) handleWsAuth(session *WsSession, msg model.EventMessage) error {
-	user := unauthenticatedUserId
-	defer this.addSession(session, &user)
-	err := this.removeSession(session, false)
-	tokenString, ok := msg.Payload.(string)
-	if !ok {
+	// The session stays in the map while the token is validated, so notifications fanned out meanwhile still reach it.
+	var token *auth.Token
+	if tokenString, ok := msg.Payload.(string); ok {
+		parsed, err := auth.ParseAndValidateToken(tokenString, this.config.JwtSigningKey)
+		if err == nil && !parsed.IsExpired() {
+			token = &parsed
+		}
+	}
+	if err := this.replaceSessionToken(session, token); err != nil {
+		return err
+	}
+	if token == nil {
 		return this.wsSendAuthRequest(session)
 	}
-	token, err := auth.ParseAndValidateToken(tokenString, this.config.JwtSigningKey)
-	if err != nil {
-		return this.wsSendAuthRequest(session)
-	}
-	if token.IsExpired() {
-		return this.wsSendAuthRequest(session)
-	}
+	return this.wsSend(session, model.WsAuthOkType, nil)
+}
 
-	session.token = &token
-	user = session.token.GetUserId()
-	err = this.wsSend(session, model.WsAuthOkType, nil)
-	return err
+// replaceSessionToken moves the session from the key of its current token to the key of the new one ("" for nil)
+// and stores the token in the same critical section. A failed re-auth passes nil, so removeSession keeps finding
+// the session under the key it is stored under.
+func (this *Controller) replaceSessionToken(session *WsSession, token *auth.Token) error {
+	newUser := unauthenticatedUserId
+	if token != nil {
+		newUser = token.GetUserId()
+	}
+	this.sessionsMux.Lock()
+	defer this.sessionsMux.Unlock()
+	oldUser := unauthenticatedUserId
+	if old := session.token.Load(); old != nil {
+		oldUser = old.GetUserId()
+	}
+	list := this.sessions[oldUser]
+	idx := slices.IndexFunc(list, func(s *WsSession) bool { return s.id == session.id })
+	if idx < 0 {
+		return errors.New("session not found")
+	}
+	if oldUser != newUser {
+		this.sessions[oldUser] = remove(list, idx)
+		this.sessions[newUser] = append(this.sessions[newUser], session)
+	}
+	session.token.Store(token)
+	return nil
 }
 
 func (this *Controller) handleWsNotificationUpdate(userId string, notification model.Notification) {
-	sessions, ok := this.sessions[userId]
-	if !ok {
-		return
-	}
+	// A copy taken under the lock, since addSession and removeSession change the map and reorder the slice.
+	this.sessionsMux.Lock()
+	sessions := slices.Clone(this.sessions[userId])
+	this.sessionsMux.Unlock()
 	for i := range sessions {
 		i := i // thread safety
 		go func() {
-			if sessions[i].token == nil || sessions[i].token.IsExpired() {
+			if token := sessions[i].token.Load(); token == nil || token.IsExpired() {
 				err := this.wsSendAuthRequest(sessions[i])
 				if err != nil {
 					log.Logger.Error("unable to send auth request", attributes.ErrorKey, err)
@@ -170,14 +196,14 @@ func (this *Controller) handleWsNotificationUpdate(userId string, notification m
 }
 
 func (this *Controller) handleWsNotificationDelete(userId string, ids []string) {
-	sessions, ok := this.sessions[userId]
-	if !ok {
-		return
-	}
+	// A copy taken under the lock, since addSession and removeSession change the map and reorder the slice.
+	this.sessionsMux.Lock()
+	sessions := slices.Clone(this.sessions[userId])
+	this.sessionsMux.Unlock()
 	for i := range sessions {
 		i := i // thread safety
 		go func() {
-			if sessions[i].token == nil || sessions[i].token.IsExpired() {
+			if token := sessions[i].token.Load(); token == nil || token.IsExpired() {
 				err := this.wsSendAuthRequest(sessions[i])
 				if err != nil {
 					log.Logger.Error("unable to send auth request", attributes.ErrorKey, err)
@@ -195,10 +221,11 @@ func (this *Controller) handleWsNotificationDelete(userId string, ids []string) 
 }
 
 func (this *Controller) handleWsRefresh(session *WsSession) error {
-	if session.token == nil || session.token.IsExpired() {
+	token := session.token.Load()
+	if token == nil || token.IsExpired() {
 		return this.wsSendAuthRequest(session)
 	}
-	list, err, _ := this.ListNotifications(*session.token, persistence.ListOptions{
+	list, err, _ := this.ListNotifications(*token, persistence.ListOptions{
 		Limit:  1000000,
 		Offset: 0,
 	}, model.ChannelWebsocket)
@@ -210,8 +237,8 @@ func (this *Controller) handleWsRefresh(session *WsSession) error {
 
 func (this *Controller) removeSession(session *WsSession, close bool) (err error) {
 	user := ""
-	if session.token != nil {
-		user = session.token.GetUserId()
+	if token := session.token.Load(); token != nil {
+		user = token.GetUserId()
 	}
 	this.sessionsMux.Lock()
 	defer this.sessionsMux.Unlock()
