@@ -61,11 +61,26 @@ func (this *Controller) handleFCMNotificationUpdate(userId string, notification 
 
 	encoded, _ := json.Marshal(notification)
 
+	message := buildFcmMessage(tokens, notification, string(encoded))
+
+	responses, err := this.firebaseClient.SendEachForMulticast(context.Background(), message)
+	if err != nil {
+		log.Logger.Error("sending FCM multicast update failed", attributes.ErrorKey, err)
+		return
+	}
+	this.handleFcmResponses(responses, tokens, userId)
+}
+
+// fcmSilentChannelId is the Android notification channel for silent notifications. The Android app creates it
+// with low importance (no sound, no vibration). If a client does not know the channel, Android falls back to the default channel.
+const fcmSilentChannelId = "silent"
+
+func buildFcmMessage(tokens []string, notification model.Notification, encodedPayload string) *messaging.MulticastMessage {
 	message := &messaging.MulticastMessage{
 		Tokens: tokens,
 		Data: map[string]string{
 			"type":    model.WsUpdateSetType,
-			"payload": string(encoded),
+			"payload": encodedPayload,
 		},
 	}
 
@@ -74,27 +89,26 @@ func (this *Controller) handleFCMNotificationUpdate(userId string, notification 
 			Title: notification.Title,
 			Body:  notification.Message,
 		}
-		message.Android = &messaging.AndroidConfig{
-			Notification: &messaging.AndroidNotification{
-				Title: notification.Title,
-				Body:  notification.Message,
-				Tag:   notification.Id,
-			},
-			Priority: "high",
+		androidNotification := &messaging.AndroidNotification{
+			Title: notification.Title,
+			Body:  notification.Message,
+			Tag:   notification.Id,
 		}
+		if notification.Silent {
+			androidNotification.ChannelID = fcmSilentChannelId
+		}
+		message.Android = &messaging.AndroidConfig{
+			Notification: androidNotification,
+			Priority:     "high",
+		}
+		// no sound is set for APNS, so silent needs nothing extra there
 		message.APNS = &messaging.APNSConfig{
 			Headers: map[string]string{
 				"apns-collapse-id": notification.Id,
 			},
 		}
 	}
-
-	responses, err := this.firebaseClient.SendEachForMulticast(context.Background(), message)
-	if err != nil {
-		log.Logger.Error("sending FCM multicast update failed", attributes.ErrorKey, err)
-		return
-	}
-	this.handleFcmResponses(responses, tokens, userId)
+	return message
 }
 
 func (this *Controller) handleFCMNotificationDelete(userId string, ids []string) {

@@ -56,7 +56,12 @@ type Notification struct {
 	IsRead    bool      `json:"isRead" bson:"isRead"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 	Topic     `json:"topic" bson:"topic"`
-	hash      [32]byte
+	// Tag is a stable key chosen by the sender, unique per user. A create with a tag that already exists
+	// for the user replaces that notification instead of adding a new one.
+	Tag string `json:"tag,omitempty" bson:"tag,omitempty"`
+	// Silent delivers the notification without sound or vibration.
+	Silent bool `json:"silent,omitempty" bson:"silent,omitempty"`
+	hash   [32]byte
 }
 
 func (n *Notification) ToDB() (db NotificationDB, err error) {
@@ -65,6 +70,7 @@ func (n *Notification) ToDB() (db NotificationDB, err error) {
 		return db, err
 	}
 	db.UserId, db.Title, db.Message, db.IsRead, db.CreatedAt, db.Topic, db.Hash = n.UserId, n.Title, n.Message, n.IsRead, n.CreatedAt, n.Topic, n.Hash()
+	db.Tag, db.Silent = n.Tag, n.Silent
 	return
 }
 
@@ -79,7 +85,9 @@ func (n *Notification) Equal(other interface{}) bool {
 		n.Title == otherN.Title &&
 		n.Message == otherN.Message &&
 		n.UserId == otherN.UserId &&
-		n.Topic == otherN.Topic
+		n.Topic == otherN.Topic &&
+		n.Tag == otherN.Tag &&
+		n.Silent == otherN.Silent
 }
 
 func (n *Notification) Hash() [32]byte {
@@ -101,6 +109,8 @@ type NotificationDB struct {
 	CreatedAt time.Time          `bson:"created_at"`
 	Topic     `bson:"topic"`
 	Hash      [32]byte `bson:"hash"`
+	Tag       string   `bson:"tag,omitempty"`
+	Silent    bool     `bson:"silent,omitempty"`
 }
 
 type NotificationList struct {

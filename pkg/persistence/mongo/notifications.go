@@ -39,6 +39,7 @@ var notificationUserIdKey = "userId"
 var notificationCreatedAtKey string
 var notificationIdKey = "_id"
 var notificationHashKey = "hash"
+var notificationTagKey = "tag"
 var topicKey = "topic"
 
 func initNotifications() {
@@ -66,6 +67,10 @@ func initNotifications() {
 			return err
 		}
 		err = db.ensureIndex(collection, "notificationuseridindex", notificationUserIdKey, true, false)
+		if err != nil {
+			return err
+		}
+		err = db.ensureCompoundIndex(collection, "notificationuseridtagindex", true, false, notificationUserIdKey, notificationTagKey)
 		if err != nil {
 			return err
 		}
@@ -161,6 +166,30 @@ func (this *Mongo) ReadNotificationByHash(userId string, hash [32]byte, notOlder
 	if err == mongo.ErrNoDocuments {
 		return result, err, http.StatusNotFound
 	}
+	if err != nil {
+		return result, err, http.StatusInternalServerError
+	}
+	return result, nil, http.StatusOK
+}
+
+func (this *Mongo) ReadNotificationByTag(userId string, tag string) (result model.Notification, err error, errCode int) {
+	ctx, _ := getTimeoutContext()
+	temp := this.notificationCollection().FindOne(
+		ctx,
+		bson.M{
+			"$and": []bson.M{
+				{notificationTagKey: tag},
+				{notificationUserIdKey: userId},
+			},
+		}, &options.FindOneOptions{Sort: bson.D{{"created_at", -1}}})
+	err = temp.Err()
+	if err == mongo.ErrNoDocuments {
+		return result, err, http.StatusNotFound
+	}
+	if err != nil {
+		return result, err, http.StatusInternalServerError
+	}
+	err = temp.Decode(&result)
 	if err != nil {
 		return result, err, http.StatusInternalServerError
 	}

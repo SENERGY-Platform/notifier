@@ -66,6 +66,9 @@ func (this *Controller) SetNotification(token auth.Token, notification model.Not
 	// retain immutable fields
 	notification.Topic = existing.Topic
 	notification.CreatedAt = existing.CreatedAt
+	// the tag is the key for replacing; losing it on a client update (e.g. marking as read) would detach the notification
+	notification.Tag = existing.Tag
+	notification.Silent = existing.Silent
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
 		this.handleUpdate(notification, token, settings)
@@ -100,7 +103,6 @@ func (this *Controller) CreateNotification(token *auth.Token, notification model
 		}
 	}
 
-	notification.Id = primitive.NewObjectID().Hex()
 	if notification.CreatedAt.Before(time.UnixMilli(0)) {
 		notification.CreatedAt = time.Now().Truncate(time.Millisecond)
 	}
@@ -108,6 +110,27 @@ func (this *Controller) CreateNotification(token *auth.Token, notification model
 	if err != nil {
 		return model.Notification{}, err, errCode
 	}
+
+	if notification.Tag != "" {
+		// Known limitation: lookup and write are not atomic. Two concurrent creates with the same new tag
+		// may both miss and produce two notifications. Accepted on purpose, no locking.
+		existing, err, code := this.db.ReadNotificationByTag(token.GetUserId(), notification.Tag)
+		if err == nil {
+			// replace: keep the id so clients (websocket, FCM collapse tag) replace the existing notification.
+			// CreatedAt is the new one (set above, or from the request) so the replacement sorts as new.
+			notification.Id = existing.Id
+			err, errCode = this.db.SetNotification(notification)
+			if err == nil {
+				this.handleUpdate(notification, *token, settings) // update: no email
+			}
+			return notification, err, errCode
+		}
+		if code != http.StatusNotFound {
+			return model.Notification{}, err, code
+		}
+	}
+
+	notification.Id = primitive.NewObjectID().Hex()
 	err, errCode = this.db.SetNotification(notification)
 	if err == nil {
 		this.handleCreate(notification, *token, settings)

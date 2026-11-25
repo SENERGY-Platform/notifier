@@ -90,6 +90,7 @@ type Persistence interface {
 	ListNotifications(userId string, options persistence.ListOptions, topics []model.Topic) (result []model.Notification, total int64, err error, errCode int)
 	ReadNotification(userId string, id string) (result model.Notification, err error, errCode int)
 	ReadNotificationByHash(userId string, hash [32]byte, notOlderThan time.Time) (result model.Notification, err error, errCode int)
+	ReadNotificationByTag(userId string, tag string) (result model.Notification, err error, errCode int)
 	SetNotification(notification model.Notification) (err error, errCode int)
 	RemoveNotifications(userId string, ids []string) (err error, errCode int)
 

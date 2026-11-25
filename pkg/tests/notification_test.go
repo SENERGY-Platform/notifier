@@ -223,6 +223,129 @@ func TestNotificationCRUD(t *testing.T) {
 	})
 }
 
+func TestNotificationTag(t *testing.T) {
+	wg, ctx, cancel, conf, err := setup()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer wg.Wait()
+	defer cancel()
+
+	err = pkg.Start(ctx, wg, conf)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	time.Sleep(time.Second)
+
+	first, err := createNotification(conf, "tag-user1", model.Notification{
+		UserId:  "tag-user1",
+		Title:   "Trockner laeuft",
+		Message: "2h verbleibend",
+		Topic:   model.TopicProcesses,
+		Tag:     "dryer",
+		Silent:  true,
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Tag != "dryer" || !first.Silent {
+		t.Error("tag or silent not returned", first)
+	}
+	if err = readNotification(conf, "tag-user1", first.Id, first); err != nil {
+		t.Error(err)
+	}
+
+	time.Sleep(10 * time.Millisecond)
+
+	second, err := createNotification(conf, "tag-user1", model.Notification{
+		UserId:  "tag-user1",
+		Title:   "Trockner fertig!",
+		Message: "fertig",
+		Topic:   model.TopicProcesses,
+		Tag:     "dryer",
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Id != first.Id {
+		t.Error("same tag did not return same id", first.Id, second.Id)
+	}
+	if second.Title != "Trockner fertig!" || second.Message != "fertig" || second.Silent {
+		t.Error("notification not replaced", second)
+	}
+	if !second.CreatedAt.After(first.CreatedAt) {
+		t.Error("created_at not advanced", first.CreatedAt, second.CreatedAt)
+	}
+	if err = readNotification(conf, "tag-user1", second.Id, second); err != nil {
+		t.Error(err)
+	}
+	t.Run("list has one", listNotifications(conf, "tag-user1", model.NotificationList{
+		Total:         1,
+		Limit:         10,
+		Offset:        0,
+		Notifications: []model.Notification{second},
+	}))
+
+	// a client update (mobile app) does not carry tag and silent and must not detach the notification
+	clientUpdate := model.Notification{
+		Id:      second.Id,
+		UserId:  "tag-user1",
+		Title:   second.Title,
+		Message: second.Message,
+		IsRead:  true,
+	}
+	if err = updateNotification(conf, "tag-user1", clientUpdate); err != nil {
+		t.Fatal(err)
+	}
+	second.IsRead = true
+	if err = readNotification(conf, "tag-user1", second.Id, second); err != nil {
+		t.Error("tag or silent lost on update:", err)
+	}
+	third, err := createNotification(conf, "tag-user1", model.Notification{
+		UserId:  "tag-user1",
+		Title:   "Trockner laeuft wieder",
+		Message: "1h verbleibend",
+		Topic:   model.TopicProcesses,
+		Tag:     "dryer",
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if third.Id != first.Id {
+		t.Error("tag lost after client update, got new id", third.Id)
+	}
+	if third.IsRead {
+		t.Error("replacement must be unread")
+	}
+
+	other, err := createNotification(conf, "tag-user2", model.Notification{
+		UserId:  "tag-user2",
+		Title:   "Trockner laeuft",
+		Message: "2h verbleibend",
+		Tag:     "dryer",
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if other.Id == first.Id {
+		t.Error("same tag of different user returned same id")
+	}
+
+	untagged1, err := createNotification(conf, "tag-user1", model.Notification{UserId: "tag-user1", Title: "x", Message: "x"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	untagged2, err := createNotification(conf, "tag-user1", model.Notification{UserId: "tag-user1", Title: "x", Message: "x"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if untagged1.Id == untagged2.Id {
+		t.Error("untagged notifications must not be replaced")
+	}
+}
+
 func listNotifications(config configuration.Config, userId string, expected model.NotificationList) func(t *testing.T) {
 	return func(t *testing.T) {
 		token, err := createToken(userId)
